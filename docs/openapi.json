@@ -1,0 +1,294 @@
+{
+  "paths": {
+    "/openapi/site/project-updates": {
+      "get": {
+        "operationId": "projectUpdates",
+        "summary": "读取项目更新情况（已发布公告 + 路线图），供外部 Agent 只读了解项目动态",
+        "responses": {
+          "200": {
+            "description": "项目更新情况",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["appName", "generatedAt", "announcements", "roadmap"],
+                  "properties": {
+                    "appName": {
+                      "type": "string",
+                      "description": "应用名称",
+                      "example": "Extoken-Agent 信息交换站"
+                    },
+                    "generatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "数据生成时间",
+                      "example": "2026-07-22T08:00:00.000Z"
+                    },
+                    "announcements": {
+                      "type": "array",
+                      "description": "已发布公告（更新日志 / 通知 / 维护），按时间倒序",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "title", "content", "category", "published", "createdAt", "updatedAt"],
+                        "properties": {
+                          "id": { "type": "string", "description": "公告 ID", "example": "a1000000-0000-0000-0000-000000000000" },
+                          "title": { "type": "string", "description": "公告标题", "example": "v1.2 上线：新增使用案例页" },
+                          "content": { "type": "string", "description": "公告正文（Markdown）", "example": "## 更新内容\n- 新增典型使用案例页面" },
+                          "category": { "type": "string", "enum": ["update", "announcement", "maintenance"], "description": "公告类型", "example": "update" },
+                          "published": { "type": "boolean", "description": "是否已发布（开放接口恒为 true）", "example": true },
+                          "createdAt": { "type": "string", "format": "date-time", "description": "发布时间", "example": "2026-07-22T08:00:00.000Z" },
+                          "updatedAt": { "type": "string", "format": "date-time", "description": "最后更新时间", "example": "2026-07-22T08:00:00.000Z" }
+                        }
+                      }
+                    },
+                    "roadmap": {
+                      "type": "array",
+                      "description": "改进 / bug 路线图，按时间倒序",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "title", "description", "itemType", "status", "priority", "createdAt", "updatedAt"],
+                        "properties": {
+                          "id": { "type": "string", "description": "路线图项 ID", "example": "r1000000-0000-0000-0000-000000000000" },
+                          "title": { "type": "string", "description": "标题", "example": "支持批量取件" },
+                          "description": { "type": "string", "description": "详细描述", "example": "允许一次取回多个 extoken 包" },
+                          "itemType": { "type": "string", "enum": ["feature", "bug"], "description": "类型：功能或缺陷", "example": "feature" },
+                          "status": { "type": "string", "enum": ["planned", "in_progress", "done", "wontfix"], "description": "状态", "example": "planned" },
+                          "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "优先级", "example": "high" },
+                          "createdAt": { "type": "string", "format": "date-time", "description": "创建时间", "example": "2026-07-22T08:00:00.000Z" },
+                          "updatedAt": { "type": "string", "format": "date-time", "description": "最后更新时间", "example": "2026-07-22T08:00:00.000Z" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi/extoken/skill": {
+      "get": {
+        "operationId": "skill",
+        "summary": "获取 extoken 技能说明（Markdown，含项目介绍与操作步骤）",
+        "responses": {
+          "200": {
+            "description": "技能说明 Markdown 文本",
+            "content": {
+              "text/markdown": {
+                "schema": { "type": "string" },
+                "example": "---\nname: extoken\n---\n# extoken 交换技能\n..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi/extoken": {
+      "post": {
+        "operationId": "create",
+        "summary": "打包上下文为加密 extoken 包并返回取件码",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-extoken-key",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "extoken 账号 API Key",
+            "example": "exk_3f9a2b1c8d7e6f5a4b3c2d1e0f9a8b7c"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "items"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "包标题",
+                    "example": "登录模块重构上下文"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "可选说明",
+                    "example": "给下一个 Agent 的交接"
+                  },
+                  "expiresInDays": {
+                    "type": "number",
+                    "description": "有效期天数，0 或省略表示永久",
+                    "example": 7
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["type", "title", "content"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["chat", "doc", "config"],
+                          "description": "内容块类型",
+                          "example": "chat"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "内容块标题",
+                          "example": "需求澄清对话"
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "内容块正文",
+                          "example": "用户希望重构登录模块……"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "打包成功，返回取件码",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "code", "title", "itemCount"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "包 ID",
+                      "example": "p1000000-0000-0000-0000-000000000000"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "取件码，交给接手方 Agent",
+                      "example": "EXT-7K2M-9QP4-3XR8"
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "包标题",
+                      "example": "登录模块重构上下文"
+                    },
+                    "itemCount": {
+                      "type": "number",
+                      "description": "内容块数量",
+                      "example": 3
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true,
+                      "description": "过期时间，永久时为 null",
+                      "example": "2026-07-26T08:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi/extoken/redeem": {
+      "post": {
+        "operationId": "redeem",
+        "summary": "凭取件码取回并解密 extoken 包内容",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-extoken-key",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "extoken 账号 API Key",
+            "example": "exk_3f9a2b1c8d7e6f5a4b3c2d1e0f9a8b7c"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "取件码",
+                    "example": "EXT-7K2M-9QP4-3XR8"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "取件成功，返回解密后的完整内容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["title", "description", "items", "createdAt", "downloadCount"],
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "description": "包标题",
+                      "example": "登录模块重构上下文"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "包说明",
+                      "example": "给下一个 Agent 的交接"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["type", "title", "content"],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": ["chat", "doc", "config"],
+                            "description": "内容块类型",
+                            "example": "doc"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "内容块标题",
+                            "example": "设计笔记"
+                          },
+                          "content": {
+                            "type": "string",
+                            "description": "内容块正文",
+                            "example": "采用 OAuth2 授权码模式……"
+                          }
+                        }
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "打包时间",
+                      "example": "2026-07-19T08:00:00.000Z"
+                    },
+                    "downloadCount": {
+                      "type": "number",
+                      "description": "累计取件次数",
+                      "example": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

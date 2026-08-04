@@ -1,0 +1,31 @@
+{
+  "id": "generate_handover_document_1",
+  "pluginKey": "@official-plugins/ai-text-generate",
+  "pluginVersion": "1.0.17",
+  "name": "任务交接文档生成",
+  "description": "根据任务相关信息自动生成结构化的Markdown交接文档，包含任务概述、当前进度、关键上下文、下一步建议四个部分",
+  "icon": "",
+  "paramsSchema": {
+    "type": "object",
+    "properties": {
+      "handover_info": {
+        "description": "拼接好的交接单信息，包含任务标题、任务背景、源/目标Agent、Git分支、已改动文件、遗留问题、下一步计划等内容",
+        "type": "string"
+      }
+    },
+    "required": [
+      "handover_info"
+    ]
+  },
+  "formValue": {
+    "modelID": "87",
+    "modelParams": {
+      "maxTokens": 8192,
+      "temperature": 0.5
+    },
+    "prompt": "你是一位专业的项目交接文档撰写专家，擅长将零散的任务信息整理成清晰、结构化的交接文档。\n\n请根据以下提供的任务交接信息，生成一份规范的Markdown格式交接文档：\n{{input.handover_info}}\n\n文档必须包含以下四个部分，结构清晰，内容完整：\n\n## 1. 任务概述\n- 清晰说明任务的核心目标和背景意义\n- 明确任务的发起方和接收方\n\n## 2. 当前进度\n- 总结任务目前的完成情况\n- 说明已完成的工作内容和达成的成果\n\n## 3. 关键上下文\n- 列出相关的Git分支信息\n- 梳理已改动的文件及其作用\n- 整理当前存在的遗留问题和风险点\n- 注明需要特别注意的技术细节或业务规则\n\n## 4. 下一步建议\n- 基于当前进度和遗留问题，给出明确的后续工作建议\n- 列出优先需要处理的事项\n- 提供推进任务的参考思路\n\n输出要求：\n- 严格遵循Markdown格式，层级清晰，使用合适的标题、列表等格式\n- 内容准确客观，基于提供的信息整理，不添加无关内容\n- 语言简洁明了，重点突出，便于接收方快速理解\n- 对于信息不明确的内容，标注\"待补充\"即可"
+  },
+  "createdAt": 1784282917908,
+  "updatedAt": 1784282917908,
+  "createdBy": 7661821002875276261
+}

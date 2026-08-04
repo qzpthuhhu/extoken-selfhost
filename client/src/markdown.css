@@ -1,0 +1,356 @@
+/**
+ * cyber-prose：产品通知公告 + SKILL.md 长文档统一的赛博风阅读排版。
+ * 作用域限定在 .cyber-prose 容器内，避免污染全局；覆盖 Streamdown 的 prose 默认样式。
+ * 强调色复用 index.css 的 --cyber-cyan / --cyber-purple。
+ */
+
+.cyber-prose {
+  --doc-body: hsl(0 0% 88%);
+  --doc-dim: hsl(0 0% 63%);
+  --doc-cyan: hsl(var(--cyber-cyan));
+  --doc-purple: hsl(var(--cyber-purple));
+
+  font-family:
+    "Inter", "PingFang SC", -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+  color: var(--doc-body);
+  font-size: 15px;
+  line-height: 1.78;
+  max-width: 72ch;
+}
+
+/* ---- 段落 ---- */
+.cyber-prose p {
+  margin: 0 0 1.5em;
+  color: var(--doc-body);
+}
+.cyber-prose > :first-child {
+  margin-top: 0;
+}
+.cyber-prose > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---- 一级标题：霓虹蓝→紫渐变文字 ---- */
+.cyber-prose :where(h1, [data-streamdown="heading-1"]) {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 2em 0 0.8em;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--doc-cyan), var(--doc-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- 二级标题：左侧 3px 霓虹蓝竖线 ---- */
+.cyber-prose :where(h2, [data-streamdown="heading-2"]) {
+  position: relative;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 2em 0 0.8em;
+  padding-left: 0.7em;
+  color: var(--doc-body);
+}
+.cyber-prose :where(h2, [data-streamdown="heading-2"])::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--doc-cyan), var(--doc-purple));
+  box-shadow: 0 0 8px hsl(var(--cyber-cyan) / 0.6);
+}
+
+/* ---- 三级标题：稍浅 ---- */
+.cyber-prose :where(h3, [data-streamdown="heading-3"]) {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.6em 0 0.6em;
+  color: hsl(0 0% 78%);
+}
+.cyber-prose :where(h4, h5, h6) {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 1.4em 0 0.5em;
+  color: hsl(0 0% 74%);
+}
+
+/* ---- 标题 hover 锚点图标 ---- */
+.cyber-prose .heading-anchor {
+  position: absolute;
+  left: -1.1em;
+  top: 0;
+  opacity: 0;
+  color: var(--doc-cyan);
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+  -webkit-text-fill-color: var(--doc-cyan);
+}
+.cyber-prose .cyber-heading {
+  position: relative;
+  scroll-margin-top: 5rem;
+}
+.cyber-prose .cyber-heading:hover .heading-anchor {
+  opacity: 0.9;
+}
+
+/* ---- 链接 hover 下划线动画 ---- */
+.cyber-prose :where(a, [data-streamdown="link"]) {
+  position: relative;
+  color: var(--doc-cyan);
+  text-decoration: none;
+  font-weight: 500;
+  background-image: linear-gradient(90deg, var(--doc-cyan), var(--doc-purple));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1.5px;
+  transition: background-size 0.28s ease;
+  padding-bottom: 1px;
+}
+.cyber-prose :where(a, [data-streamdown="link"]):hover {
+  background-size: 100% 1.5px;
+}
+
+/* ---- 内联代码：深色半透明 + 霓虹蓝边框 ---- */
+.cyber-prose :where(code, [data-streamdown="inline-code"]):not(pre code) {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace;
+  font-size: 0.86em;
+  padding: 0.12em 0.42em;
+  border-radius: 4px;
+  background: hsl(240 30% 8% / 0.7);
+  border: 1px solid hsl(var(--cyber-cyan) / 0.35);
+  color: hsl(190 90% 72%);
+  word-break: break-word;
+}
+
+/* ---- 代码块：深色渐变背景 + 左侧霓虹竖条 ---- */
+.cyber-prose [data-streamdown="code-block"] {
+  position: relative;
+  margin: 1.5em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--cyber-cyan) / 0.2);
+  background: linear-gradient(160deg, hsl(240 28% 8%), hsl(240 32% 5%));
+  box-shadow: 0 8px 28px -14px hsl(240 60% 2% / 0.8);
+}
+.cyber-prose [data-streamdown="code-block"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--doc-cyan), var(--doc-purple));
+  z-index: 2;
+}
+.cyber-prose [data-streamdown="code-block-header"] {
+  background: hsl(240 26% 10% / 0.9) !important;
+  color: var(--doc-dim) !important;
+  border-bottom: 1px solid hsl(var(--cyber-cyan) / 0.15);
+  padding-left: 1rem;
+  font-family: "JetBrains Mono", monospace;
+}
+.cyber-prose [data-streamdown="code-block"] pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  background: transparent !important;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.cyber-prose [data-streamdown="code-block"] pre code {
+  background: transparent !important;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* ---- 代码块复制/下载按钮：hover 发光 ---- */
+.cyber-prose :where(
+    [data-streamdown="code-block-copy-button"],
+    [data-streamdown="code-block-download-button"]
+  ) {
+  color: var(--doc-dim);
+  border-radius: 6px;
+  transition: color 0.18s ease, background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.cyber-prose :where(
+    [data-streamdown="code-block-copy-button"],
+    [data-streamdown="code-block-download-button"]
+  ):hover {
+  color: var(--doc-cyan);
+  background: hsl(var(--cyber-cyan) / 0.12);
+  box-shadow: 0 0 12px -2px hsl(var(--cyber-cyan) / 0.6);
+}
+
+/* ---- 无序列表：自定义霓虹小圆点 ---- */
+.cyber-prose :where(ul, [data-streamdown="unordered-list"]) {
+  list-style: none;
+  margin: 0 0 1.5em;
+  padding-left: 1.4em;
+}
+.cyber-prose
+  :where(ul, [data-streamdown="unordered-list"])
+  > :where(li, [data-streamdown="list-item"]) {
+  position: relative;
+  margin: 0.5em 0;
+  padding-left: 0.2em;
+}
+.cyber-prose
+  :where(ul, [data-streamdown="unordered-list"])
+  > :where(li, [data-streamdown="list-item"])::before {
+  content: "";
+  position: absolute;
+  left: -0.9em;
+  top: 0.72em;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--doc-cyan);
+  box-shadow: 0 0 6px hsl(var(--cyber-cyan) / 0.8);
+}
+
+/* ---- 有序列表：数字圆形背景，步骤式引导 ---- */
+.cyber-prose :where(ol, [data-streamdown="ordered-list"]) {
+  list-style: none;
+  counter-reset: cyber-step;
+  margin: 0 0 1.5em;
+  padding-left: 0.4em;
+}
+.cyber-prose
+  :where(ol, [data-streamdown="ordered-list"])
+  > :where(li, [data-streamdown="list-item"]) {
+  position: relative;
+  counter-increment: cyber-step;
+  margin: 0.5em 0;
+  padding-left: 2.2em;
+  min-height: 1.6em;
+}
+.cyber-prose
+  :where(ol, [data-streamdown="ordered-list"])
+  > :where(li, [data-streamdown="list-item"])::before {
+  content: counter(cyber-step);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  width: 1.5em;
+  height: 1.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78em;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  color: hsl(240 40% 6%);
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--doc-cyan), var(--doc-purple));
+  box-shadow: 0 0 8px hsl(var(--cyber-cyan) / 0.4);
+}
+
+/* ---- 引用/提示块：默认提示(蓝 💡)，警告(橙 ⚠️) ---- */
+.cyber-prose :where(blockquote, [data-streamdown="blockquote"]) {
+  position: relative;
+  margin: 1.5em 0;
+  padding: 0.9em 1em 0.9em 2.6em;
+  border-radius: 6px;
+  border-left: 3px solid var(--doc-cyan);
+  background: hsl(var(--cyber-cyan) / 0.07);
+  color: var(--doc-body);
+  font-style: normal;
+}
+.cyber-prose :where(blockquote, [data-streamdown="blockquote"])::before {
+  content: "💡";
+  position: absolute;
+  left: 0.85em;
+  top: 0.85em;
+  font-size: 1em;
+  line-height: 1.4;
+}
+.cyber-prose :where(blockquote, [data-streamdown="blockquote"]) p:last-child {
+  margin-bottom: 0;
+}
+.cyber-prose [data-callout="warning"] {
+  border-left-color: hsl(32 95% 58%);
+  background: hsl(32 95% 58% / 0.08);
+}
+.cyber-prose [data-callout="warning"]::before {
+  content: "⚠️";
+}
+
+/* ---- 分隔线 ---- */
+.cyber-prose :where(hr, [data-streamdown="horizontal-rule"]) {
+  margin: 2em 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--cyber-cyan) / 0.4),
+    transparent
+  );
+}
+
+/* ---- strong / 表格微调 ---- */
+.cyber-prose :where(strong, [data-streamdown="strong"]) {
+  color: hsl(0 0% 96%);
+  font-weight: 600;
+}
+.cyber-prose [data-streamdown="table-wrapper"] {
+  margin: 1.5em 0;
+  font-size: 0.9em;
+}
+
+/* ---- 悬浮目录 ---- */
+.cyber-toc {
+  position: sticky;
+  top: 5rem;
+  align-self: flex-start;
+  width: 200px;
+  flex-shrink: 0;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  padding-left: 1rem;
+  border-left: 1px solid hsl(var(--cyber-cyan) / 0.15);
+}
+.cyber-toc-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(0 0% 63%);
+  margin-bottom: 0.6em;
+}
+.cyber-toc a {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 0.28em 0;
+  color: hsl(0 0% 63%);
+  text-decoration: none;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.cyber-toc a:hover {
+  color: hsl(var(--cyber-cyan));
+  transform: translateX(2px);
+}
+.cyber-toc a[data-level="3"] {
+  padding-left: 0.9em;
+  font-size: 12px;
+}
+
+/* ---- 减少动态偏好：禁用装饰性动画/过渡 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cyber-prose :where(a, [data-streamdown="link"]),
+  .cyber-toc a {
+    transition: none !important;
+  }
+}

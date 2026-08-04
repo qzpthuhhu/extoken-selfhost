@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production builds
+dist/
+*/dist/
+build/
+*/build/
+
+# Environment / secrets files (NEVER commit)
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+/logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/
+.playwright-cli/
+
+# Lock files (keep package-lock.json for consistent installs)
+yarn.lock
+pnpm-lock.yaml
+
+# Cache files
+.eslintcache
+*.tsbuildinfo
+
+# swc wasm
+.swc
+
+# Agent / workspace state files (never commit)
+.agent/
+.agent-memory/
+.agent-memory/**/*
+.handoff/
+.npm_cache
+
+# Local zip dumps / backups (contain all source, never need in git)
+code.zip
+*.zip
+!client/public/**/*.zip
+
+# drizzle migrations snapshot (generated, auto-tracked in src only when using kit)
+drizzle/

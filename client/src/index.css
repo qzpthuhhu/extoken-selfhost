@@ -1,0 +1,278 @@
+@import '@lark-apaas/client-toolkit/lib/index.css';
+@import "tw-animate-css";
+@import "./tailwind-theme.css";
+@import "./typography.css";
+@import "./markdown.css";
+
+@source "../../node_modules/streamdown/dist/*.js";
+@config "../../tailwind.config.ts";
+
+/* ============ Cyber / Technical theme ============ */
+[data-theme="cyber"] {
+  --elevate-1: rgba(0, 212, 255, 0.05);
+  --elevate-2: rgba(0, 212, 255, 0.1);
+  --background: hsl(240 24% 5%);
+  --foreground: hsl(200 20% 92%);
+  --card: hsl(240 22% 9%);
+  --card-foreground: hsl(200 20% 92%);
+  --popover: hsl(240 24% 8%);
+  --popover-foreground: hsl(200 20% 92%);
+  --primary: hsl(190 100% 50%);
+  --primary-foreground: hsl(240 40% 6%);
+  --secondary: hsl(240 18% 16%);
+  --secondary-foreground: hsl(200 20% 92%);
+  --muted: hsl(240 16% 13%);
+  --muted-foreground: hsl(212 16% 62%);
+  --accent: hsl(271 45% 22%);
+  --accent-foreground: hsl(280 40% 90%);
+  --info: hsl(190 100% 50%);
+  --info-foreground: hsl(240 40% 6%);
+  --destructive: hsl(0 80% 62%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --success: hsl(152 70% 48%);
+  --success-foreground: hsl(240 40% 6%);
+  --warning: hsl(32 95% 58%);
+  --warning-foreground: hsl(240 40% 6%);
+  --border: hsl(240 20% 18%);
+  --input: hsl(240 20% 16%);
+  --ring: hsl(190 100% 50%);
+  --chart-1: hsl(190 100% 50%);
+  --chart-2: hsl(271 91% 65%);
+  --chart-3: hsl(32 95% 58%);
+  --chart-4: hsl(152 70% 48%);
+  --chart-5: hsl(320 90% 62%);
+  --sidebar: hsl(240 22% 9%);
+  --sidebar-foreground: hsl(200 20% 92%);
+  --sidebar-primary: hsl(190 100% 50%);
+  --sidebar-primary-foreground: hsl(240 40% 6%);
+  --sidebar-accent: hsl(271 45% 22%);
+  --sidebar-accent-foreground: hsl(280 40% 90%);
+  --sidebar-border: hsl(240 20% 18%);
+  --sidebar-ring: hsl(190 100% 50%);
+  --primary-border: hsl(from hsl(190 100% 50%) h s calc(l + var(--opaque-button-border-intensity)));
+  --secondary-border: hsl(from hsl(240 18% 16%) h s calc(l + var(--opaque-button-border-intensity)));
+  --destructive-border: hsl(from hsl(0 80% 62%) h s calc(l + var(--opaque-button-border-intensity)));
+  --accent-border: hsl(from hsl(271 45% 22%) h s calc(l + var(--opaque-button-border-intensity)));
+  --muted-border: hsl(from hsl(240 16% 13%) h s calc(l + var(--opaque-button-border-intensity)));
+}
+
+/* Cyber 强调色（供工具类引用，非 cyber 主题下退化到主色，保证跨主题安全） */
+:root {
+  --cyber-cyan: 190 100% 50%;
+  --cyber-purple: 271 91% 65%;
+}
+
+/* ---- 环境背景：动态网格 + 径向光晕 + 噪点纹理 ---- */
+.cyber-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cyber-ambient::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background-image:
+    linear-gradient(hsl(var(--cyber-cyan) / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--cyber-cyan) / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  animation: cyber-grid-drift 24s linear infinite;
+}
+.cyber-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(600px circle at 15% 10%, hsl(var(--cyber-cyan) / 0.12), transparent 55%),
+    radial-gradient(700px circle at 85% 20%, hsl(var(--cyber-purple) / 0.12), transparent 55%),
+    radial-gradient(500px circle at 50% 100%, hsl(var(--cyber-purple) / 0.08), transparent 60%);
+}
+@keyframes cyber-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 44px 44px, 44px 44px; }
+}
+/* SVG 噪点叠加层 */
+.cyber-noise {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- 玻璃拟态卡片 ---- */
+.glass-panel {
+  background: hsl(var(--cyber-cyan) / 0.015);
+  background-color: color-mix(in srgb, var(--card) 62%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid hsl(var(--cyber-cyan) / 0.14);
+  box-shadow:
+    0 1px 0 0 hsl(var(--cyber-cyan) / 0.08) inset,
+    0 8px 32px -12px hsl(240 40% 2% / 0.6);
+}
+.glass-panel-strong {
+  background-color: color-mix(in srgb, var(--card) 78%, transparent);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid hsl(var(--cyber-cyan) / 0.2);
+}
+
+/* ---- 发光边框（当前页 / 高亮态） ---- */
+.cyber-glow-border {
+  border: 1px solid hsl(var(--cyber-cyan) / 0.5);
+  box-shadow:
+    0 0 0 1px hsl(var(--cyber-cyan) / 0.25),
+    0 0 16px -2px hsl(var(--cyber-cyan) / 0.45),
+    0 0 32px -6px hsl(var(--cyber-purple) / 0.3);
+}
+.cyber-text-glow {
+  text-shadow: 0 0 12px hsl(var(--cyber-cyan) / 0.55);
+}
+
+/* ---- 导航 hover 渐变下划线 ---- */
+.cyber-underline::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, hsl(var(--cyber-cyan)), hsl(var(--cyber-purple)));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s ease;
+}
+.cyber-underline:hover::after {
+  transform: scaleX(1);
+}
+
+/* ---- 终端代码块 + 语法高亮 ---- */
+.term-block {
+  position: relative;
+  background: linear-gradient(180deg, hsl(240 28% 7%), hsl(240 30% 5%));
+  border: 1px solid hsl(var(--cyber-cyan) / 0.18);
+  border-radius: var(--radius);
+  box-shadow: 0 0 24px -10px hsl(var(--cyber-cyan) / 0.4) inset;
+}
+.term-tok-url { color: hsl(190 100% 62%); }
+.term-tok-header { color: hsl(271 90% 74%); }
+.term-tok-key { color: hsl(32 95% 62%); }
+.term-tok-dim { color: hsl(212 16% 58%); }
+
+/* ---- 脉冲动画（复制按钮） ---- */
+@keyframes cyber-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--cyber-cyan) / 0.5); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--cyber-cyan) / 0); }
+}
+.cyber-pulse {
+  animation: cyber-pulse 2s ease-out infinite;
+}
+
+/* ---- 圆形进度环流动描边 ---- */
+@keyframes cyber-dash-flow {
+  to { stroke-dashoffset: -100; }
+}
+.cyber-ring-flow {
+  animation: cyber-dash-flow 1.6s linear infinite;
+}
+
+/* ---- 按钮 hover 缩放 + 发光 ---- */
+.cyber-magnetic {
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+.cyber-magnetic:hover {
+  transform: translateZ(0) scale(1.04);
+  box-shadow: 0 0 16px -2px hsl(var(--cyber-cyan) / 0.5);
+}
+.cyber-magnetic:active {
+  transform: translateZ(0) scale(0.98);
+}
+
+/* ---- 自定义磁吸光标 ---- */
+.cyber-cursor-active,
+.cyber-cursor-active * {
+  cursor: none !important;
+}
+.cyber-cursor-dot,
+.cyber-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  border-radius: 9999px;
+  will-change: transform;
+}
+.cyber-cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: hsl(var(--cyber-cyan));
+  box-shadow: 0 0 8px hsl(var(--cyber-cyan) / 0.9);
+}
+.cyber-cursor-ring {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1.5px solid hsl(var(--cyber-cyan) / 0.7);
+  transition: width 0.18s ease, height 0.18s ease, margin 0.18s ease,
+    border-color 0.18s ease, background-color 0.18s ease;
+}
+.cyber-cursor-ring.is-hover {
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-color: hsl(var(--cyber-purple) / 0.8);
+  background: hsl(var(--cyber-purple) / 0.08);
+}
+
+/* ---- 触摸设备优雅降级：隐藏自定义光标，弱化重特效 ---- */
+@media (hover: none), (pointer: coarse) {
+  .cyber-cursor-dot,
+  .cyber-cursor-ring {
+    display: none !important;
+  }
+  .cyber-cursor-active,
+  .cyber-cursor-active * {
+    cursor: auto !important;
+  }
+}
+
+/* ---- 尊重用户减少动态偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cyber-ambient::before,
+  .cyber-pulse,
+  .cyber-ring-flow {
+    animation: none !important;
+  }
+  .cyber-underline::after {
+    transition: none !important;
+  }
+  .cyber-magnetic {
+    transition: none !important;
+  }
+  .cyber-magnetic:hover,
+  .cyber-magnetic:active {
+    transform: none !important;
+  }
+  .cyber-cursor-dot,
+  .cyber-cursor-ring {
+    display: none !important;
+  }
+  .cyber-cursor-active,
+  .cyber-cursor-active * {
+    cursor: auto !important;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}

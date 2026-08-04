@@ -1,0 +1,61 @@
+# ==========================================================================
+# Extoken 私有化部署 - Systemd 单元文件
+# 复制：sudo cp deploy/extoken.service /etc/systemd/system/extoken.service
+# 生效：sudo systemctl daemon-reload && sudo systemctl enable --now extoken
+# 查看：sudo systemctl status extoken
+# 日志：sudo journalctl -u extoken -f -n 200
+# ==========================================================================
+
+[Unit]
+Description=Extoken Self-host (NestJS + React)
+Documentation=https://github.com/your-name/extoken
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+# ① 运行用户：建议不要用 root，创建独立用户：sudo useradd -r -s /bin/bash extoken
+User=extoken
+Group=extoken
+
+# ② 项目目录：把打包后的代码、node_modules、.env 都放到这里
+WorkingDirectory=/opt/extoken
+
+# ③ 启动命令：node 18+ 就能直接跑 dist/server/main.js（我们用 node 20 LTS）
+Environment=NODE_ENV=production
+Environment=TZ=Asia/Shanghai
+
+# 启动：建议 .env 里所有敏感变量都放 EnvironmentFile 里，不直接写这里
+# EnvironmentFile=-/etc/default/extoken   # 可选：把 DATABASE_URL / JWT_* 放 /etc/default/extoken
+
+ExecStart=/usr/bin/node /opt/extoken/dist/server/main.js
+
+# 进程守护
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=8192
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/extoken /tmp /var/tmp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=extoken
+
+[Install]
+WantedBy=multi-user.target
