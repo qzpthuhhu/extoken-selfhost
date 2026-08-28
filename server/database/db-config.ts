@@ -43,7 +43,7 @@ export function createDrizzleClient(): PostgresJsDatabase {
 
 export async function pingDatabase(db: PostgresJsDatabase): Promise<boolean> {
   try {
-    await db.execute(sql => sql`SELECT 1 AS ping`);
+    await db.execute('SELECT 1 AS ping');
     logger.log('Database connected OK');
     return true;
   } catch (error) {

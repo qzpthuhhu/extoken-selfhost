@@ -9,7 +9,7 @@ import {
 
 import type { AdminOverviewResponse } from "@shared/api.interface";
 import { Spinner } from "@client/src/components/ui/spinner";
-import { useAuth, ROLE_SUBJECT } from "@lark-apaas/client-toolkit/auth";
+import { useAuth, ROLE_SUBJECT } from "@client/src/hooks/useAuth";
 import {
   Tabs,
   TabsList,

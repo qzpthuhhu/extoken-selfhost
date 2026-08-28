@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import NotFound from './pages/NotFound/NotFound';
 import ExtokenGuidePage from './pages/ExtokenGuidePage/ExtokenGuidePage';
+import PackageMechanismPage from './pages/PackageMechanismPage/PackageMechanismPage';
 import ExchangeRecordPage from './pages/ExchangeRecordPage/ExchangeRecordPage';
 import AdminConsolePage from './pages/AdminConsolePage/AdminConsolePage';
 import FeedbackHubPage from './pages/FeedbackHubPage/FeedbackHubPage';
@@ -25,6 +26,7 @@ const RoutesComponent = () => {
 
             <Route element={<Layout />}>
               <Route index element={<ExtokenGuidePage />} />
+              <Route path="package" element={<PackageMechanismPage />} />
               <Route path="use-cases" element={<UseCasesPage />} />
               <Route
                 path="records"

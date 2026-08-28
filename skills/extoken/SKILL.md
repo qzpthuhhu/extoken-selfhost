@@ -9,17 +9,17 @@ extoken 是 Agent 之间交换上下文的加密通道：把聊天记录、过�
 
 ## 认证：两个请求头
 
-本服务部署在飞书 aPaaS 上，对外调用统一走 `/openapi` 开放网关。每个请求带两个请求头：
+本服务为私有化自托管部署，对外调用统一走 `/openapi` 开放网关。每个请求带两个请求头：
 
-1. **网关 API Key（`Authorization` 请求头，`Bearer` 前缀）**：让请求穿透 aPaaS 网关、无需飞书登录。这是**服务方公开内置的固定值**，已经写在下面每个示例里，照抄即可，无需申请：
+1. **网关 API Key（`Authorization` 请求头，`Bearer` 前缀）**：用于通过开放网关访问服务，免 SSO 登录。这是**服务方公开内置的固定值**，已经写在下面每个示例里，照抄即可，无需申请：
 
    ```
    Authorization: Bearer Ox7WYVxpcwiBJ0LIRDP9-UpY5g6q-TKrQQx-bNI6BA8
    ```
 
-2. **extoken API Key（`x-extoken-key` 请求头，`exk_` 前缀）**：标识账号归属。**这个 key 由用户提供**——用户用飞书账号登录 extoken 网站首页后会看到自己的专属 API Key，复制给你即可。你无需、也无法自行注册账号。除获取说明外的接口都要带这个头。
+2. **extoken API Key（`x-extoken-key` 请求头，`exk_` 前缀）**：标识账号归属。**这个 key 由用户提供**——用户用本站账号登录 extoken 网站首页后会看到自己的专属 API Key，复制给你即可。你无需、也无法自行注册账号。除获取说明外的接口都要带这个头。
 
-> ⚠️ **网关凭证必须放在 `Authorization: Bearer <网关Key>` 头里，不要用 `X-Api-Key` 头**——aPaaS 开放网关只认 `Authorization`，用 `X-Api-Key` 会持续返回 `Invalid Request: missing or invalid Authorization header`（403）。这不是偶发、也不是缺登录态，就是头位置放错了，照上面示例用 `Authorization: Bearer` 即可。
+> ⚠️ **网关凭证必须放在 `Authorization: Bearer <网关Key>` 头里，不要用 `X-Api-Key` 头**——开放网关只认 `Authorization`，用 `X-Api-Key` 会持续返回 `Invalid Request: missing or invalid Authorization header`（403）。这不是偶发、也不是缺登录态，就是头位置放错了，照上面示例用 `Authorization: Bearer` 即可。
 
 服务地址记为 `API_BASE`（形如 `https://<your-app-host>`，取用户从 extoken 网站首页复制指令时给你的那个地址）。所有请求路径为 `API_BASE/openapi/extoken/...`。
 
@@ -93,7 +93,7 @@ x-extoken-key: exk_xxxxxxxx...
 模板（`<CODE>` 换成实际取件码，`<你的 exk_ 账号 Key>` 换成用户提供给你的 `exk_` key）：
 
 > 取件码：`<CODE>`
-> 若你的 Agent 还没接入 extoken（AI Agent 间安全传递任务上下文的交换站，部署在飞书 aPaaS），把这段发给它：对 `https://bytedance-app_17aa2bxc8jc-1870881994873899.aiforce.run/app/app_17aa2bxc8jc/openapi/extoken/redeem` 发 POST，带两个头 `Authorization: Bearer Ox7WYVxpcwiBJ0LIRDP9-UpY5g6q-TKrQQx-bNI6BA8`（固定网关凭证）和 `x-extoken-key: <你的 exk_ 账号 Key>`，body `{"code":"<CODE>"}`，即可取回内容。想要完整用法可先带 `Authorization` 头 GET 同目录 `/skill` 拿说明并存为常驻 skill。注意：网关凭证只能放 `Authorization: Bearer`，用 `X-Api-Key` 会一直 403。
+> 若你的 Agent 还没接入 extoken（AI Agent 间安全传递任务上下文的交换站，私有化自托管部署），把这段发给它：对 `API_BASE/openapi/extoken/redeem` 发 POST，带两个头 `Authorization: Bearer Ox7WYVxpcwiBJ0LIRDP9-UpY5g6q-TKrQQx-bNI6BA8`（固定网关凭证）和 `x-extoken-key: <你的 exk_ 账号 Key>`，body `{"code":"<CODE>"}`，即可取回内容。想要完整用法可先带 `Authorization` 头 GET 同目录 `/skill` 拿说明并存为常驻 skill。注意：网关凭证只能放 `Authorization: Bearer`，用 `X-Api-Key` 会一直 403。
 
 ## 取件
 

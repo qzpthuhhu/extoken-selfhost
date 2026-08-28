@@ -3,6 +3,7 @@ import type {
   CreateAnnouncementRequest,
   CreateFeedbackRequest,
   CreateRoadmapRequest,
+  PublicConfigResponse,
   UpdateAnnouncementRequest,
   UpdateFeedbackRequest,
   UpdateRoadmapRequest,
@@ -18,6 +19,21 @@ export class SiteController {
   @Get('announcements')
   announcements() {
     return this.siteService.listPublishedAnnouncements();
+  }
+
+  /**
+   * 公开配置：前端拿不到 window.__platform__（如 Nginx 直出静态 index.html，占位符未被
+   * @Render 替换）时的 HTTP 回退入口。口径与 view.controller 的 SSR 注入完全一致。
+   */
+  @Get('public-config')
+  publicConfig(): PublicConfigResponse {
+    return {
+      appName: process.env.APP_NAME || process.env.VITE_APP_NAME || 'Extoken 上下文交换站',
+      publicOpenapiGatewayToken:
+        process.env.PUBLIC_OPENAPI_GATEWAY_TOKEN?.trim() ||
+        process.env.OPENAPI_GATEWAY_TOKEN?.trim() ||
+        '',
+    };
   }
 
   @Post('feedback')

@@ -1,0 +1,19 @@
+{
+  "name": "@lark-apaas/client-toolkit",
+  "version": "1.0.0-selfhost",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": "./index.js",
+    "./logger": "./logger/index.js",
+    "./dataloom": "./dataloom/index.js",
+    "./utils/resolveAppUrl": "./utils/resolveAppUrl.js",
+    "./utils/getEnv": "./utils/getEnv.js",
+    "./components/NotFoundRender": "./components/NotFoundRender.js",
+    "./components/UniversalLink": "./components/UniversalLink.js",
+    "./auth": "./auth/index.js",
+    "./tools/storage": "./tools/storage.js",
+    "./tools/services": "./tools/services.js"
+  }
+}

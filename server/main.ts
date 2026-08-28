@@ -2,15 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
-import * as compression from 'compression';
-import * as cookieParser from 'cookie-parser';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { join } from 'path';
 import { __express as hbsExpressEngine } from 'hbs';
 
 import { AppModule } from './app.module';
 
-function readCorsOrigins(): RegExp | string[] {
+function readCorsOrigins(): Array<string | RegExp> {
   const raw = process.env.CORS_ORIGIN;
   if (!raw) {
     return [
@@ -105,6 +105,8 @@ async function bootstrap() {
     });
     app.use('/api/auth/login', authLimiter);
     app.use('/api/auth/register', authLimiter);
+    app.use('/api/auth/email-code', authLimiter);
+    app.use('/api/auth/reset-password', authLimiter);
   }
 
   // ===== 全局 DTO 校验 =====

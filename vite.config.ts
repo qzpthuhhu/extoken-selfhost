@@ -15,14 +15,14 @@ export default defineConfig(({ mode }) => {
     root: path.resolve(__dirname, 'client'),
     base: process.env.CLIENT_BASE_PATH || '/',
     envDir: __dirname,
-    envPrefix: ['VITE_', ''],
+    envPrefix: ['VITE_'],
     publicDir: path.resolve(__dirname, 'client/public'),
     resolve: {
       alias: {
-      '@client/src': path.resolve(__dirname, 'client/src'),
-      '@': path.resolve(__dirname, 'client/src'),
-      '@shared': path.resolve(__dirname, 'shared'),
-      '@server': path.resolve(__dirname, 'server'),
+        '@client/src': path.resolve(__dirname, 'client/src'),
+        '@': path.resolve(__dirname, 'client/src'),
+        '@shared': path.resolve(__dirname, 'shared'),
+        '@server': path.resolve(__dirname, 'server'),
     },
   },
   css: {
@@ -100,4 +100,4 @@ export default defineConfig(({ mode }) => {
     __APP_PUBLIC_URL__: JSON.stringify(publicUrl),
   },
 };
-};
+});

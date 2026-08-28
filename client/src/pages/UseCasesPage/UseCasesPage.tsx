@@ -9,11 +9,13 @@ import {
   PackagePlus,
   PackageOpen,
   Lightbulb,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 import { Card } from "@client/src/components/ui/card";
-import { Button } from "@client/src/components/ui/button";
+import { Badge } from "@client/src/components/ui/badge";
 import {
   Tabs,
   TabsList,
@@ -50,72 +52,88 @@ const PromptRow: React.FC<PromptRowProps> = ({
   copyId,
   copiedId,
   onCopy,
-}) => (
-  <div className="space-y-1.5">
-    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-      <Icon className="size-3.5" />
-      {label}
+}) => {
+  const copied = copiedId === copyId;
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2 text-sm font-semibold text-foreground/85">
+        <Icon className="size-4 text-primary" />
+        {label}
+      </div>
+      <div className="group/prompt relative rounded-xl border border-border/60 bg-background/50 px-4 py-3.5 pr-12 text-[13.5px] leading-relaxed text-foreground/90 transition-colors hover:border-primary/35">
+        {prompt}
+        <button
+          onClick={() => onCopy(prompt, copyId)}
+          className={`absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-lg border transition-all ${
+            copied
+              ? "border-success/40 bg-success/10 text-success"
+              : "border-border/60 bg-card/70 text-muted-foreground hover:border-primary/40 hover:text-primary"
+          }`}
+          aria-label={`复制${label}`}
+        >
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+        </button>
+      </div>
     </div>
-    <div className="relative group px-3 py-2 pr-9 rounded-sm bg-background border border-border text-xs leading-relaxed text-foreground/90">
-      {prompt}
-      <button
-        onClick={() => onCopy(prompt, copyId)}
-        className="absolute top-1.5 right-1.5 flex items-center justify-center size-6 rounded-sm text-muted-foreground hover:text-foreground hover-elevate"
-        aria-label={`复制${label}`}
-      >
-        {copiedId === copyId ? (
-          <Check className="size-3.5 text-success" />
-        ) : (
-          <Copy className="size-3.5" />
-        )}
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 interface UseCaseCardProps {
   item: UseCaseItem;
+  index: number;
   copiedId: string | null;
   onCopy: (text: string, id: string) => void;
 }
 
 const UseCaseCard: React.FC<UseCaseCardProps> = ({
   item,
+  index,
   copiedId,
   onCopy,
 }) => (
-  <Card className="p-4 border border-border rounded-sm bg-card flex flex-col gap-3">
-    <div className="space-y-1">
-      <div className="text-sm font-semibold">{item.title}</div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        {item.pain}
-      </p>
-    </div>
+  <motion.div
+    initial={{ opacity: 0, y: 22 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+    className="h-full"
+  >
+    <Card className="group glass-panel relative flex h-full flex-col gap-5 overflow-hidden rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10">
+      {/* 顶部渐变高光条 */}
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-    <div className="flex flex-wrap items-center gap-1.5">
-      {item.blocks.map((block) => {
-        const meta = BLOCK_META[block];
-        return (
-          <span
-            key={block}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-accent text-accent-foreground text-[11px] font-medium"
-          >
+      <div className="space-y-2.5">
+        <h3 className="text-xl font-semibold tracking-tight text-foreground">
+          {item.title}
+        </h3>
+        <p className="text-[15px] leading-7 text-muted-foreground">
+          {item.pain}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {item.blocks.map((block) => {
+          const meta = BLOCK_META[block];
+          return (
             <span
-              className={`size-1.5 rounded-full bg-current ${meta.dotClass}`}
-            />
-            {meta.label}
-          </span>
-        );
-      })}
-    </div>
+              key={block}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-accent/50 px-3 py-1 text-xs font-medium text-accent-foreground"
+            >
+              <span className={`size-2 rounded-full bg-current ${meta.dotClass}`} />
+              {meta.label}
+            </span>
+          );
+        })}
+      </div>
 
-    <div className="text-[11px] text-muted-foreground">
-      <span className="text-foreground/70">交给：</span>
-      {item.audience}
-    </div>
+      <div className="flex items-start gap-2.5 rounded-xl bg-background/40 px-3.5 py-2.5 text-[13px] leading-6 text-muted-foreground">
+        <ArrowRight className="mt-0.5 size-4 shrink-0 text-primary/70" />
+        <span>
+          <span className="text-foreground/70">交给：</span>
+          {item.audience}
+        </span>
+      </div>
 
-    <div className="space-y-3 pt-1 border-t border-border/60">
-      <div className="pt-3">
+      <div className="mt-auto space-y-4 border-t border-border/40 pt-5">
         <PromptRow
           icon={PackagePlus}
           label="打包提示词"
@@ -124,17 +142,17 @@ const UseCaseCard: React.FC<UseCaseCardProps> = ({
           copiedId={copiedId}
           onCopy={onCopy}
         />
+        <PromptRow
+          icon={PackageOpen}
+          label="取件提示词"
+          prompt={item.redeemPrompt}
+          copyId={`${item.id}-redeem`}
+          copiedId={copiedId}
+          onCopy={onCopy}
+        />
       </div>
-      <PromptRow
-        icon={PackageOpen}
-        label="取件提示词"
-        prompt={item.redeemPrompt}
-        copyId={`${item.id}-redeem`}
-        copiedId={copiedId}
-        onCopy={onCopy}
-      />
-    </div>
-  </Card>
+    </Card>
+  </motion.div>
 );
 
 const UseCasesPage: React.FC = () => {
@@ -152,29 +170,35 @@ const UseCasesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Lightbulb className="size-5 text-primary" />
+    <div className="mx-auto w-full max-w-6xl space-y-12">
+      <header className="space-y-5">
+        <Badge
+          variant="outline"
+          className="border-primary/25 bg-primary/8 px-3 py-1 text-sm text-primary"
+        >
+          <Lightbulb className="mr-1.5 size-4" />
           典型使用案例
+        </Badge>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          按场景拿来即用的接力剧本
         </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-          extoken 让 AI Agent 之间安全交接任务上下文。下面按场景整理了常见用法，
-          每个案例都给了「打包」和「取件」两句现成提示词，接入后直接发给你的 Agent 即可。
+        <p className="max-w-3xl text-lg leading-9 text-muted-foreground">
+          Extoken 让 AI Agent 之间安全交接任务上下文。下面按场景整理了常见用法，每个案例都配好了「打包」和「取件」两句现成提示词，接入后直接发给你的
+          Agent 即可。
         </p>
       </header>
 
-      <Tabs defaultValue={USE_CASE_CATEGORIES[0].key} className="gap-4">
-        <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 bg-card border border-border p-1">
+      <Tabs defaultValue={USE_CASE_CATEGORIES[0].key} className="gap-8">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-2xl border border-border/60 bg-card/50 p-2 backdrop-blur-md">
           {USE_CASE_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICON[cat.iconName];
             return (
               <TabsTrigger
                 key={cat.key}
                 value={cat.key}
-                className="flex-none gap-1.5 data-[state=active]:bg-accent data-[state=active]:text-primary"
+                className="flex-none gap-2 rounded-xl px-5 py-2.5 text-[15px] font-medium text-muted-foreground transition-all data-[state=active]:bg-primary/12 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_0_1px_hsl(var(--cyber-cyan)/0.25),0_4px_20px_-8px_hsl(var(--cyber-cyan)/0.5)]"
               >
-                <Icon className="size-4" />
+                <Icon className="size-[18px]" />
                 {cat.label}
               </TabsTrigger>
             );
@@ -182,15 +206,26 @@ const UseCasesPage: React.FC = () => {
         </TabsList>
 
         {USE_CASE_CATEGORIES.map((cat) => (
-          <TabsContent key={cat.key} value={cat.key} className="space-y-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
+          <TabsContent
+            key={cat.key}
+            value={cat.key}
+            className="space-y-7 focus-visible:outline-none"
+          >
+            <motion.p
+              key={`${cat.key}-desc`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="text-base leading-8 text-muted-foreground"
+            >
               {cat.desc}
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {cat.cases.map((item) => (
+            </motion.p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {cat.cases.map((item, index) => (
                 <UseCaseCard
                   key={item.id}
                   item={item}
+                  index={index}
                   copiedId={copiedId}
                   onCopy={handleCopy}
                 />

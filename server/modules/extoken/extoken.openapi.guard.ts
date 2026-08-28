@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 
 /**
  * 开放网关鉴权守卫：
@@ -11,22 +11,31 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 @Injectable()
 export class OpenapiGatewayGuard implements CanActivate {
   private readonly token: string;
+  private readonly allowMissingToken: boolean;
   constructor() {
     const t = process.env.OPENAPI_GATEWAY_TOKEN?.trim();
-    if (!t) {
-      // 避免把 undefined 当 token 用；开发态没配时允许跳过，但会打警告
+    this.allowMissingToken =
+      process.env.NODE_ENV === 'development' &&
+      process.env.ALLOW_OPENAPI_WITHOUT_GATEWAY_TOKEN === 'true';
+
+    if (!t && this.allowMissingToken) {
       // eslint-disable-next-line no-console
-      console.warn('[OpenapiGatewayGuard] 未配置 OPENAPI_GATEWAY_TOKEN，将允许 /openapi/extoken/* 匿名访问。生产环境必须配置强随机字符串！');
-      this.token = '';
-    } else {
-      this.token = t;
+      console.warn(
+        '[OpenapiGatewayGuard] 开发模式下未配置 OPENAPI_GATEWAY_TOKEN，且已显式允许跳过网关鉴权。请勿用于生产环境。',
+      );
     }
+    this.token = t || '';
   }
 
   canActivate(ctx: ExecutionContext): boolean {
-    if (!this.token) return true;
+    if (!this.token) {
+      if (this.allowMissingToken) return true;
+      throw new ServiceUnavailableException(
+        '开放网关未启用：服务端缺少 OPENAPI_GATEWAY_TOKEN 配置',
+      );
+    }
     const req = ctx.switchToHttp().getRequest<Request>();
-    const header = (req.headers as Record<string, string | undefined>).authorization || '';
+    const header = (req.headers as unknown as Record<string, string | undefined>).authorization || '';
     const candidate = /^Bearer\s+/i.test(header) ? header.slice(7).trim() : header.trim();
     if (!candidate || candidate !== this.token) {
       throw new UnauthorizedException(

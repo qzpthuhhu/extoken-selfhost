@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Rocket, History, Menu, ShieldCheck, Bell, Lightbulb, LogOut } from 'lucide-react';
+import { Rocket, History, Menu, ShieldCheck, Bell, Lightbulb, LogOut, PackageOpen } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -23,7 +23,6 @@ import {
 } from '@client/src/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@client/src/components/ui/avatar';
 import CyberBackground from '@client/src/components/cyber/CyberBackground';
-import CyberCursor from '@client/src/components/cyber/CyberCursor';
 
 const GUEST_AVATAR =
   'https://lf3-static.bytednsdoc.com/obj/eden-cn/LMfspH/ljhwZthlaukjlkulzlp/miao/no-person.svg';
@@ -31,7 +30,8 @@ const GUEST_AVATAR =
 const ANNO_SEEN_KEY = 'agent-exchange-anno-seen';
 
 const navItems = [
-  { path: '/', label: '快速上手', icon: Rocket, end: true },
+  { path: '/', label: '首页', icon: Rocket, end: true },
+  { path: '/package', label: 'Extoken 包', icon: PackageOpen, end: false },
   { path: '/use-cases', label: '使用案例', icon: Lightbulb, end: false },
   { path: '/records', label: '收发记录', icon: History, end: false },
   { path: '/feedback', label: '反馈与通知', icon: Bell, end: false },
@@ -53,6 +53,7 @@ const Layout = () => {
   const [scrolled, setScrolled] = useState(false);
   const lastScrollY = useRef(0);
   const reduced = useReducedMotion();
+  const isHome = location.pathname === '/';
 
   useEffect(() => {
     const onScroll = () => {
@@ -151,7 +152,6 @@ const Layout = () => {
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <CyberBackground />
-      <CyberCursor />
       <motion.header
         initial={false}
         animate={{ y: navHidden && !reduced ? '-100%' : '0%' }}
@@ -162,7 +162,7 @@ const Layout = () => {
             : 'bg-card/80 backdrop-blur-sm border-border'
         }`}
       >
-        <div className="max-w-6xl mx-auto h-full px-4 flex items-center justify-between gap-4">
+        <div className="mx-auto h-full w-full max-w-7xl px-4 md:px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <NavLink to="/" className="flex items-center gap-2 shrink-0">
               <span className="flex items-center justify-center size-8 rounded-sm bg-gradient-to-br from-primary to-[hsl(217_91%_45%)] text-primary-foreground shadow-sm">
@@ -198,6 +198,15 @@ const Layout = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {!isLoggedIn && (
+              <button
+                type="button"
+                onClick={handleLogin}
+                className="hidden md:inline-flex items-center justify-center min-h-9 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground border border-primary-border hover-elevate active-elevate-2"
+              >
+                登录
+              </button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Avatar className="size-8">
@@ -239,10 +248,21 @@ const Layout = () => {
         )}
       </motion.header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 pt-14">
-        <div className="py-6">
-          <Outlet />
-        </div>
+      <main className="relative z-10 pt-14">
+        <motion.div
+          key={location.pathname}
+          initial={reduced ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {isHome ? (
+            <Outlet />
+          ) : (
+            <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-10">
+              <Outlet />
+            </div>
+          )}
+        </motion.div>
       </main>
 
       <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>

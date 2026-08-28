@@ -36,10 +36,11 @@ interface AuthContextValue {
   ability: AuthAbility;
   login: (body: { username: string; password: string }) => Promise<AuthResponse>;
   register: (body: {
-    username: string;
+    username?: string;
     password: string;
+    email: string;
+    emailCode: string;
     nickname?: string;
-    email?: string;
   }) => Promise<AuthResponse>;
   logout: () => void;
   refreshMe: () => Promise<AuthUser | null>;
@@ -118,10 +119,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = useCallback(
     async (body: {
-      username: string;
+      username?: string;
       password: string;
+      email: string;
+      emailCode: string;
       nickname?: string;
-      email?: string;
     }) => {
       setIsLoading(true);
       setError(null);
@@ -192,6 +194,11 @@ export function useCurrentUserProfile():
 
 /** 和旧 toolkit 对齐：返回 APP 标题 */
 export function useAppInfo(): { appName: string } {
-  const name = (import.meta.env.VITE_APP_NAME as string) || 'Extoken 上下文交换站';
+  const platformName =
+    typeof window !== 'undefined' ? window.__platform__?.appName : undefined;
+  const name =
+    platformName ||
+    (import.meta.env.VITE_APP_NAME as string) ||
+    'Extoken 上下文交换站';
   return { appName: name };
 }

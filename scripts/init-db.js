@@ -5,7 +5,7 @@
  * 功能：
  *   1. 读取 .env（或 OS 环境变量）中的 DATABASE_URL / INIT_ADMIN_*
  *   2. 连接 PostgreSQL，若数据库不存在先提示创建
- *   3. 执行 schema.sql（建表 + 索引）
+ *   3. 切换/确认当前 PostgreSQL 角色为 extoken，再执行 schema.sql（建表 + 索引）
  *   4. 如果 INIT_ADMIN_USERNAME / INIT_ADMIN_PASSWORD 存在，自动创建初始管理员
  *
  * 用法：
@@ -40,10 +40,11 @@ if (fs.existsSync(envFile)) {
 
 function env(name, fallback = undefined) {
   const v = process.env[name];
-  return (v === undefined || v === '') ? fallback : v;
+  return v === undefined || v === '' ? fallback : v;
 }
 
 const DATABASE_URL = env('DATABASE_URL');
+const REQUIRED_DB_ROLE = env('INIT_DB_REQUIRED_ROLE', 'extoken');
 const ADMIN_USERNAME = env('INIT_ADMIN_USERNAME');
 const ADMIN_PASSWORD = env('INIT_ADMIN_PASSWORD');
 const ADMIN_NICKNAME = env('INIT_ADMIN_NICKNAME', '超级管理员');
@@ -56,8 +57,8 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-// 2. 生成 schema.sql（若不存在）
-const SCHEMA_SQL = `
+// 2. 历史内置 schema 仅作为极端情况下的兜底；正常以 server/database/schema.sql 为真源。
+const FALLBACK_SCHEMA_SQL = `
 -- ============================================================
 -- Extoken Self-host - 数据库 Schema（PostgreSQL 14+）
 -- 生成时间：由 scripts/init-db.js 自动生成 / 维护
@@ -228,13 +229,18 @@ CREATE INDEX IF NOT EXISTS idx_app_audit_action ON app_audit_log(action);
 CREATE INDEX IF NOT EXISTS idx_app_audit_time   ON app_audit_log(created_at);
 `;
 
+const schemaSqlPath = path.join(root, 'server', 'database', 'schema.sql');
+const SCHEMA_SQL = readSchemaSql(schemaSqlPath, FALLBACK_SCHEMA_SQL);
+
 async function main() {
   console.log(`\n[init-db] 🚀 Extoken 私有化部署 · 数据库初始化\n`);
   console.log(`[init-db] 目标数据库：${maskDbUrl(DATABASE_URL)}`);
-  console.log(`[init-db] 参数：--only-schema=${onlySchema}  --force-reset=${forceReset}\n`);
+  console.log(`[init-db] 要求建表角色：${REQUIRED_DB_ROLE}`);
+  console.log(
+    `[init-db] 参数：--only-schema=${onlySchema}  --force-reset=${forceReset}\n`,
+  );
 
-  // 写 schema.sql 到磁盘（跟 scripts/同目录，方便以后 psql 导入）
-  const schemaSqlPath = path.join(root, 'server', 'database', 'schema.sql');
+  // 确保 schema.sql 存在，方便以后 psql 直接导入；不再用脚本内旧 DDL 覆盖当前真源。
   fs.mkdirSync(path.dirname(schemaSqlPath), { recursive: true });
   fs.writeFileSync(schemaSqlPath, SCHEMA_SQL, 'utf8');
   console.log(`[init-db] ✅ schema.sql 已写入：${schemaSqlPath}`);
@@ -243,17 +249,20 @@ async function main() {
   try {
     await client.connect();
     console.log(`[init-db] ✅ 已连接 PostgreSQL`);
+    await ensureRequiredDbRole(client);
   } catch (err) {
     console.error(
-      `\n[init-db] ❌ 连接数据库失败：${err && err.message ? err.message : String(err)}\n` +
-      `请检查：\n  1. PostgreSQL 是否启动？ECS 上执行 systemctl status postgresql\n  2. DATABASE_URL 的用户名/密码/数据库名/端口是否正确？\n  3. ECS 上 pg_hba.conf 是否允许本机连接？\n`,
+      `\n[init-db] ❌ 连接数据库失败或角色不符合要求：${err && err.message ? err.message : String(err)}\n` +
+        `请检查：\n  1. PostgreSQL 是否启动？ECS 上执行 systemctl status postgresql\n  2. DATABASE_URL 的用户名/密码/数据库名/端口是否正确？\n  3. ECS 上 pg_hba.conf 是否允许本机连接？\n`,
     );
     process.exit(2);
   }
 
   try {
     if (forceReset) {
-      console.warn(`\n[init-db] ⚠️  --force-reset 开启，准备删除所有表！5 秒内 Ctrl+C 可取消...\n`);
+      console.warn(
+        `\n[init-db] ⚠️  --force-reset 开启，准备删除所有表！5 秒内 Ctrl+C 可取消...\n`,
+      );
       await sleep(5000);
       await dropAllTables(client);
       console.log(`[init-db] ✅ 已清空所有旧表`);
@@ -273,17 +282,65 @@ async function main() {
     } else if (!onlySchema) {
       console.warn(
         `\n[init-db] ⚠️  未设置 INIT_ADMIN_USERNAME / INIT_ADMIN_PASSWORD，跳过创建初始管理员。\n` +
-        `        请在 .env 中设置后重新运行本脚本，或直接在 /login 注册一个普通用户后手动在 selfhost_users 表把 role 改为 'admin'。\n`,
+          `        请在 .env 中设置后重新运行本脚本，或直接在 /login 注册一个普通用户后手动在 selfhost_users 表把 role 改为 'admin'。\n`,
       );
     }
 
     // 快速健康检查
-    const { rows: userCount } = await client.query(`SELECT COUNT(*) AS c FROM selfhost_users`);
+    const { rows: userCount } = await client.query(
+      `SELECT COUNT(*) AS c FROM selfhost_users`,
+    );
     const { rows: ok } = await client.query(`SELECT 1 AS ok`);
-    console.log(`\n[init-db] 🏁 数据库初始化完成。当前用户数：${userCount[0].c}，DB健康检查：${ok[0].ok}\n`);
+    console.log(
+      `\n[init-db] 🏁 数据库初始化完成。当前用户数：${userCount[0].c}，DB健康检查：${ok[0].ok}\n`,
+    );
   } finally {
     await client.end().catch(() => {});
   }
+}
+
+async function ensureRequiredDbRole(client) {
+  const { rows } = await client.query(
+    `SELECT current_user AS current_user, session_user AS session_user`,
+  );
+  let currentUser = rows[0]?.current_user;
+  const sessionUser = rows[0]?.session_user;
+
+  if (currentUser !== REQUIRED_DB_ROLE) {
+    console.warn(
+      `[init-db] ⚠️  当前数据库角色是 ${currentUser || '(unknown)'}（session_user=${sessionUser || '(unknown)'}），尝试 SET ROLE ${REQUIRED_DB_ROLE}`,
+    );
+
+    await client.query(`SET ROLE ${quotePgIdentifier(REQUIRED_DB_ROLE)}`);
+    const { rows: switched } = await client.query(
+      `SELECT current_user AS current_user`,
+    );
+    currentUser = switched[0]?.current_user;
+  }
+
+  if (currentUser !== REQUIRED_DB_ROLE) {
+    throw new Error(
+      `当前数据库角色是 ${currentUser || '(unknown)'}（session_user=${sessionUser || '(unknown)'}），` +
+        `无法切换到 ${REQUIRED_DB_ROLE}。请将 DATABASE_URL 改为 ` +
+        `postgresql://${REQUIRED_DB_ROLE}:<password>@<host>:<port>/<db>?sslmode=disable，` +
+        `或确认当前连接角色有 SET ROLE ${REQUIRED_DB_ROLE} 权限。`,
+    );
+  }
+
+  console.log(`[init-db] ✅ 当前 PostgreSQL 角色：${currentUser}`);
+}
+
+function quotePgIdentifier(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function readSchemaSql(filePath, legacyFallbackSql) {
+  if (fs.existsSync(filePath)) return fs.readFileSync(filePath, 'utf8');
+
+  throw new Error(
+    `缺少权威建表文件 ${filePath}，拒绝使用脚本内历史 DDL 建表。` +
+      `请先恢复 server/database/schema.sql 后重试（历史 DDL 长度：${legacyFallbackSql.length} 字符）。`,
+  );
 }
 
 async function ensureAdmin(client, admin) {
@@ -297,7 +354,10 @@ async function ensureAdmin(client, admin) {
       `[init-db] ℹ️  管理员账号 ${u.username} 已存在（id=${u.id}，role=${u.role}），跳过创建`,
     );
     if (u.role !== 'admin') {
-      await client.query(`UPDATE selfhost_users SET role = 'admin', updated_at = NOW() WHERE id = $1`, [u.id]);
+      await client.query(
+        `UPDATE selfhost_users SET role = 'admin', updated_at = NOW() WHERE id = $1`,
+        [u.id],
+      );
       console.log(`[init-db] ✅ 已将 ${u.username} 的 role 提升为 admin`);
     }
     return;
@@ -312,7 +372,13 @@ async function ensureAdmin(client, admin) {
     VALUES ($1, $2, $3, $4, 'admin', 'active', 0, $5, $5, NULL)
     RETURNING id, username, role
     `,
-    [admin.username, admin.nickname || admin.username, admin.email || null, pwdHash, now],
+    [
+      admin.username,
+      admin.nickname || admin.username,
+      admin.email || null,
+      pwdHash,
+      now,
+    ],
   );
   const u = inserted[0];
   console.log(
@@ -349,6 +415,9 @@ function sleep(ms) {
 }
 
 main().catch((err) => {
-  console.error(`\n[init-db] ❌ 初始化失败：`, err && err.stack ? err.stack : err);
+  console.error(
+    `\n[init-db] ❌ 初始化失败：`,
+    err && err.stack ? err.stack : err,
+  );
   process.exit(3);
 });

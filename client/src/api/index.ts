@@ -35,6 +35,8 @@ import type {
   RoadmapListResponse,
   CreateRoadmapRequest,
   UpdateRoadmapRequest,
+  PublicConfigResponse,
+  RotateApiKeyResponse,
 } from '@shared/api.interface';
 
 async function callApi<T>(cfg: AxiosRequestConfig): Promise<T> {
@@ -89,6 +91,18 @@ export async function fetchExtokenSkill(): Promise<string> {
   }
 }
 
+export async function rotateExtokenApiKey(): Promise<RotateApiKeyResponse> {
+  try {
+    return await callApi<RotateApiKeyResponse>({
+      url: '/api/extoken/me/api-key/rotate',
+      method: 'POST',
+    });
+  } catch (error) {
+    logger.error('轮换 extoken API Key 失败', String(error));
+    throw error;
+  }
+}
+
 export async function fetchAdminOverview(): Promise<AdminOverviewResponse> {
   try {
     const resp = await api.get<AdminOverviewResponse>('/api/extoken/admin/overview');
@@ -110,6 +124,18 @@ export async function fetchAnnouncements(): Promise<AnnouncementListResponse> {
     });
   } catch (error) {
     logger.error('获取公告列表失败', String(error));
+    throw error;
+  }
+}
+
+export async function fetchPublicConfig(): Promise<PublicConfigResponse> {
+  try {
+    return await callApi<PublicConfigResponse>({
+      url: '/api/site/public-config',
+      method: 'GET',
+    });
+  } catch (error) {
+    logger.error('获取公开配置失败', String(error));
     throw error;
   }
 }

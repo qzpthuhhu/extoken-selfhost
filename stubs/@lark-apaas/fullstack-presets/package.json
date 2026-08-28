@@ -1,0 +1,6 @@
+{
+  "name": "@lark-apaas/fullstack-presets",
+  "version": "1.0.0-selfhost",
+  "main": "./index.js",
+  "types": "./index.d.ts"
+}

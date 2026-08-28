@@ -3,8 +3,6 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 export interface AuthTokens {
   accessToken: string;
   accessTokenExpiresAt: number;
-  refreshToken: string;
-  refreshTokenExpiresAt: number;
   tokenType: 'Bearer';
 }
 
@@ -24,9 +22,10 @@ export interface AuthResponse extends AuthTokens {
   user: AuthUser;
 }
 
+export type EmailCodePurpose = 'register' | 'reset_password';
+
 const TOKEN_STORAGE_KEY = 'extoken.selfhost.auth.tokens.v1';
 const USER_STORAGE_KEY = 'extoken.selfhost.auth.user.v1';
-const REFRESHING_KEY = 'extoken.selfhost.auth.refreshing';
 
 function getApiBase(): string {
   // 同源部署：前端和后端同一个域名（Nginx 反代 /api 到 3000），所以直接用 ''
@@ -51,7 +50,6 @@ export function writeTokens(tokens: AuthTokens): void {
 export function clearTokens(): void {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
-  sessionStorage.removeItem(REFRESHING_KEY);
 }
 
 export function readUserCache(): AuthUser | null {
@@ -70,12 +68,13 @@ export function writeUserCache(user: AuthUser): void {
 // ===== 刷新 token 的队列 =====
 let refreshPromise: Promise<AuthResponse> | null = null;
 
-async function refreshTokens(refreshToken: string): Promise<AuthResponse> {
+async function refreshTokens(): Promise<AuthResponse> {
   const base = getApiBase();
   const resp = await fetch(`${base}/api/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
+    credentials: 'include',
+    body: '{}',
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
@@ -111,10 +110,10 @@ api.interceptors.request.use(async (config) => {
   const now = Date.now();
   const expiresSoon = tokens.accessTokenExpiresAt - now < 60_000;
 
-  if (expiresSoon && tokens.refreshTokenExpiresAt > now) {
+  if (expiresSoon) {
     try {
       if (!refreshPromise) {
-        refreshPromise = refreshTokens(tokens.refreshToken).finally(() => {
+        refreshPromise = refreshTokens().finally(() => {
           refreshPromise = null;
         });
       }
@@ -141,10 +140,10 @@ api.interceptors.response.use(
     if (status === 401 && config && !(config as { _retried?: boolean })._retried) {
       (config as { _retried?: boolean })._retried = true;
       const tokens = readTokens();
-      if (tokens && tokens.refreshTokenExpiresAt > Date.now()) {
+      if (tokens) {
         try {
           if (!refreshPromise) {
-            refreshPromise = refreshTokens(tokens.refreshToken).finally(() => {
+            refreshPromise = refreshTokens().finally(() => {
               refreshPromise = null;
             });
           }
@@ -174,10 +173,11 @@ export async function login(body: { username: string; password: string }): Promi
 }
 
 export async function register(body: {
-  username: string;
+  username?: string;
   password: string;
+  email: string;
+  emailCode: string;
   nickname?: string;
-  email?: string;
 }): Promise<AuthResponse> {
   const resp = await api.post<AuthResponse>('/api/auth/register', body);
   const data = resp.data;
@@ -196,6 +196,27 @@ export async function changePassword(body: { oldPassword: string; newPassword: s
   return api.post('/api/auth/password', body);
 }
 
+export async function sendEmailCode(body: {
+  email: string;
+  purpose: EmailCodePurpose;
+}): Promise<{ ok: true; expiresInSeconds: number; delivery: 'smtp' | 'log' }> {
+  const resp = await api.post('/api/auth/email-code', body);
+  return resp.data;
+}
+
+export async function resetPasswordByEmail(body: {
+  email: string;
+  code: string;
+  newPassword: string;
+}): Promise<{ ok: true }> {
+  const resp = await api.post('/api/auth/reset-password', body);
+  return resp.data;
+}
+
 export function logout(): void {
+  fetch(`${getApiBase()}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  }).catch(() => undefined);
   clearTokens();
 }

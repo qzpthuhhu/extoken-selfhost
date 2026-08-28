@@ -1,4 +1,4 @@
-@import '@lark-apaas/client-toolkit/lib/index.css';
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "./tailwind-theme.css";
 @import "./typography.css";
@@ -197,53 +197,11 @@
   transform: translateZ(0) scale(0.98);
 }
 
-/* ---- 自定义磁吸光标 ---- */
-.cyber-cursor-active,
-.cyber-cursor-active * {
-  cursor: none !important;
-}
-.cyber-cursor-dot,
-.cyber-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9999;
-  pointer-events: none;
-  border-radius: 9999px;
-  will-change: transform;
-}
-.cyber-cursor-dot {
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  background: hsl(var(--cyber-cyan));
-  box-shadow: 0 0 8px hsl(var(--cyber-cyan) / 0.9);
-}
-.cyber-cursor-ring {
-  width: 30px;
-  height: 30px;
-  margin: -15px 0 0 -15px;
-  border: 1.5px solid hsl(var(--cyber-cyan) / 0.7);
-  transition: width 0.18s ease, height 0.18s ease, margin 0.18s ease,
-    border-color 0.18s ease, background-color 0.18s ease;
-}
-.cyber-cursor-ring.is-hover {
-  width: 46px;
-  height: 46px;
-  margin: -23px 0 0 -23px;
-  border-color: hsl(var(--cyber-purple) / 0.8);
-  background: hsl(var(--cyber-purple) / 0.08);
-}
-
-/* ---- 触摸设备优雅降级：隐藏自定义光标，弱化重特效 ---- */
+/* ---- 触摸设备优雅降级：弱化重特效 ---- */
 @media (hover: none), (pointer: coarse) {
-  .cyber-cursor-dot,
-  .cyber-cursor-ring {
-    display: none !important;
-  }
-  .cyber-cursor-active,
-  .cyber-cursor-active * {
-    cursor: auto !important;
+  .cyber-magnetic:hover,
+  .cyber-magnetic:active {
+    transform: none !important;
   }
 }
 
@@ -263,14 +221,6 @@
   .cyber-magnetic:hover,
   .cyber-magnetic:active {
     transform: none !important;
-  }
-  .cyber-cursor-dot,
-  .cyber-cursor-ring {
-    display: none !important;
-  }
-  .cyber-cursor-active,
-  .cyber-cursor-active * {
-    cursor: auto !important;
   }
   * {
     scroll-behavior: auto !important;

@@ -23,8 +23,8 @@ export interface AuthUserPayload {
 export interface AuthTokens {
   accessToken: string;
   accessTokenExpiresAt: number; // 毫秒时间戳
-  refreshToken: string;
-  refreshTokenExpiresAt: number;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: number;
   tokenType: 'Bearer';
 }
 
@@ -42,20 +42,44 @@ export interface UserPublicProfile {
 
 /** 通用接口：注册 */
 export interface RegisterReq {
-  username: string;
+  username?: string;
   nickname?: string;
   password: string;
-  email?: string;
+  email: string;
+  emailCode: string;
   inviteCode?: string;
 }
 
 /** 通用接口：登录 */
 export interface LoginReq {
+  /** 兼容旧字段：现在可填用户名或邮箱 */
   username: string;
   password: string;
+}
+
+export type EmailCodePurpose = 'register' | 'reset_password';
+
+export interface SendEmailCodeReq {
+  email: string;
+  purpose: EmailCodePurpose;
+}
+
+export interface SendEmailCodeResponse {
+  ok: true;
+  expiresInSeconds: number;
+  delivery: 'smtp' | 'log';
+}
+
+export interface ResetPasswordReq {
+  email: string;
+  code: string;
+  newPassword: string;
 }
 
 /** 登录/注册响应 */
 export interface AuthResponse extends AuthTokens {
   user: UserPublicProfile;
 }
+
+/** 返回给浏览器的会话响应：refresh token 仅通过 HttpOnly Cookie 下发 */
+export interface AuthSessionResponse extends AuthResponse {}

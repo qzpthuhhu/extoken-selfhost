@@ -90,6 +90,9 @@ declare global {
     MIAODA_APP_ID?: string;
     __platform__?: {
       appId?: string;
+      appName?: string;
+      publicOpenapiGatewayToken?: string;
+      [key: string]: unknown;
     };
     appId?: string;
   }

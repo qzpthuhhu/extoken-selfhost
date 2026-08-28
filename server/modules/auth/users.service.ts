@@ -1,12 +1,13 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { count, eq } from 'drizzle-orm';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { count, eq, or } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { PostgresJsDb } from '../../database/drizzle.module';
 import { DRIZZLE_DATABASE } from '../../database/drizzle.module';
 import { users, usersTable } from '../../database/schema';
-import type { AuthResponse, LoginReq, RegisterReq, UserPublicProfile } from './auth.types';
+import type { AuthResponse, AuthUserPayload, LoginReq, RegisterReq, UserPublicProfile } from './auth.types';
 import { JwtService } from './jwt.service';
 import type { AuthRole } from './auth.types';
+import { EmailVerificationService } from './email-verification.service';
 
 export interface CreateUserArg {
   username: string;
@@ -23,6 +24,7 @@ export class UsersService {
   constructor(
     @Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDb,
     private readonly jwtService: JwtService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   async findById(id: string): Promise<UserPublicProfile | null> {
@@ -35,8 +37,15 @@ export class UsersService {
     return rows[0] ?? null;
   }
 
+  async findByEmail(email: string): Promise<(typeof users.$inferSelect) | null> {
+    const normalized = this.emailVerification.normalizeEmail(email);
+    const rows = await this.db.select().from(users).where(eq(users.email, normalized)).limit(1);
+    return rows[0] ?? null;
+  }
+
   async register(req: RegisterReq): Promise<AuthResponse> {
-    const trimmed = req.username.trim();
+    const email = await this.emailVerification.consumeCode(req.email, 'register', req.emailCode);
+    const trimmed = await this.allocateUsername(req.username || email.split('@')[0]);
     if (trimmed.length < 3 || trimmed.length > 64) {
       throw new ConflictException('用户名长度要求 3-64 位');
     }
@@ -53,7 +62,8 @@ export class UsersService {
         nickname: (req.nickname || trimmed).slice(0, 128),
         passwordHash: hash,
         role: 'user',
-        email: req.email?.slice(0, 255) || null,
+        email,
+        emailVerifiedAt: new Date(),
         status: 'active',
       })
       .returning(this.publicCols());
@@ -70,7 +80,8 @@ export class UsersService {
   }
 
   async login(req: LoginReq): Promise<AuthResponse> {
-    const row = await this.findByUsername(req.username.trim());
+    const identifier = req.username.trim();
+    const row = await this.findByIdentifier(identifier);
     if (!row || row.status !== 'active') {
       throw new NotFoundException('用户不存在或已停用');
     }
@@ -88,11 +99,14 @@ export class UsersService {
     return { user: this.mapPublic(row), ...tokens };
   }
 
-  async refresh(refreshPayload: { sub: string }): Promise<AuthResponse> {
+  async refresh(refreshPayload: AuthUserPayload): Promise<AuthResponse> {
     const row = await this.db.select().from(users).where(eq(users.id, refreshPayload.sub)).limit(1);
     const user = row[0];
     if (!user || user.status !== 'active') {
       throw new NotFoundException('用户不存在或已停用');
+    }
+    if ((user.tokenVersion ?? 0) !== (refreshPayload.v ?? 0)) {
+      throw new UnauthorizedException('refresh_token 已失效，请重新登录');
     }
     const tokens = this.jwtService.signTokens({
       userId: user.id,
@@ -122,6 +136,25 @@ export class UsersService {
       .returning(this.publicCols());
     this.logger.warn(`[changePassword] user=${row.username} id=${userId} 已改密码并使旧 refresh_token 失效`);
     return updated[0];
+  }
+
+  async resetPasswordByEmail(emailInput: string, code: string, newPwd: string): Promise<void> {
+    this.validatePassword(newPwd);
+    const email = await this.emailVerification.consumeCode(emailInput, 'reset_password', code);
+    const row = await this.findByEmail(email);
+    if (!row || row.status !== 'active') {
+      throw new NotFoundException('用户不存在或已停用');
+    }
+    const newHash = await this.hashPassword(newPwd);
+    await this.db
+      .update(users)
+      .set({
+        passwordHash: newHash,
+        tokenVersion: (row.tokenVersion ?? 0) + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, row.id));
+    this.logger.warn(`[resetPassword] user=${row.username} id=${row.id} 已通过邮箱验证码重置密码`);
   }
 
   /** 由 admin 直接创建初始管理员或新增用户 */
@@ -179,6 +212,40 @@ export class UsersService {
     if (!/[A-Z]/.test(plain) || !/[a-z]/.test(plain) || !/\d/.test(plain)) {
       throw new ConflictException('密码需同时包含大小写字母和数字');
     }
+  }
+
+  private async findByIdentifier(identifier: string): Promise<(typeof users.$inferSelect) | null> {
+    const trimmed = identifier.trim();
+    if (!trimmed) return null;
+    const normalizedEmail = trimmed.includes('@') ? this.emailVerification.normalizeEmail(trimmed) : '';
+    const rows = await this.db
+      .select()
+      .from(users)
+      .where(
+        normalizedEmail
+          ? or(eq(users.username, trimmed), eq(users.email, normalizedEmail))
+          : eq(users.username, trimmed),
+      )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  private async allocateUsername(input: string): Promise<string> {
+    const base = input
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
+    const fallback = `user-${Math.random().toString(36).slice(2, 8)}`;
+    const root = base.length >= 3 ? base : fallback;
+    let candidate = root;
+    for (let i = 0; i < 20; i += 1) {
+      const existing = await this.findByUsername(candidate);
+      if (!existing) return candidate;
+      candidate = `${root.slice(0, 54)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+    throw new ConflictException('用户名已被占用，请更换用户名');
   }
 
   private async touchLastLogin(id: string): Promise<void> {

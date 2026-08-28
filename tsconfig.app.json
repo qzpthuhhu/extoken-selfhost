@@ -1,6 +1,15 @@
 {
-  "extends": "@lark-apaas/fullstack-presets/lib/simple/tsconfig/tsconfig.app.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": false,
+    "skipLibCheck": true,
     "baseUrl": "./",
     "paths": {
       "@client/*": ["client/*"],
@@ -8,7 +17,7 @@
       "@/*": ["./client/src/*"],
       "@lark-apaas/client-toolkit/tools/*": ["node_modules/@lark-apaas/client-toolkit/lib/apis/tools/*"]
     },
-    "incremental": true,
+    "incremental": true
   },
   "include": [
     "client/**/*",

@@ -30,5 +30,11 @@ declare global {
     userId?: string;
     token?: string;
     csrfToken?: string;
+    __platform__?: {
+      appName?: string;
+      publicOpenapiGatewayToken?: string;
+      appId?: string;
+      [key: string]: unknown;
+    };
   }
 }

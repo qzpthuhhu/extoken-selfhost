@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import dayjs from "dayjs";
+import { motion } from "framer-motion";
 import { logger } from "@lark-apaas/client-toolkit/logger";
 
 import { Card } from "@client/src/components/ui/card";
@@ -53,43 +54,56 @@ const AnnouncementList: React.FC = () => {
 
   if (loading) {
     return (
-      <Card className="p-4 border border-border rounded-sm bg-card">
-        <p className="text-sm text-muted-foreground">加载产品通知中...</p>
+      <Card className="glass-panel rounded-2xl p-8">
+        <p className="text-base text-muted-foreground">加载产品通知中...</p>
       </Card>
     );
   }
 
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-6 text-center border border-dashed border-border rounded-sm">
-        暂无产品通知
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 py-16 text-center">
+        <Bell className="size-8 text-muted-foreground/50" />
+        <p className="text-base text-muted-foreground">暂无产品通知</p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {items.map((item: AnnouncementItem) => {
+    <div className="space-y-5">
+      {items.map((item: AnnouncementItem, index: number) => {
         const meta = CATEGORY_META[item.category];
         return (
-          <Card
+          <motion.div
             key={item.id}
-            className="glass-panel p-4 rounded-sm space-y-3"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.4,
+              delay: index * 0.07,
+              ease: [0.22, 1, 0.36, 1],
+            }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Bell className="size-4 text-primary shrink-0" />
-                <h3 className="text-sm font-semibold break-words">
-                  {item.title}
-                </h3>
+            <Card className="group glass-panel space-y-4 rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Bell className="size-[18px]" />
+                  </span>
+                  <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                    {item.title}
+                  </h3>
+                </div>
+                <StatusBadge label={meta.label} className={meta.className} />
               </div>
-              <StatusBadge label={meta.label} className={meta.className} />
-            </div>
-            <p className="text-xs font-mono text-muted-foreground">
-              {dayjs(item.createdAt).format("YYYY-MM-DD HH:mm")}
-            </p>
-            <MarkdownDoc content={item.content} />
-          </Card>
+              <p className="font-mono text-xs text-muted-foreground">
+                {dayjs(item.createdAt).format("YYYY-MM-DD HH:mm")}
+              </p>
+              <div className="border-t border-border/40 pt-4 text-[15px] leading-8">
+                <MarkdownDoc content={item.content} />
+              </div>
+            </Card>
+          </motion.div>
         );
       })}
     </div>

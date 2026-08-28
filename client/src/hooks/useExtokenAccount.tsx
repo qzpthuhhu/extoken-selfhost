@@ -8,6 +8,7 @@ import React, {
 
 import { MyAccountResponse } from "@shared/api.interface";
 import { fetchMyAccount } from "@client/src/api";
+import { useAuth } from "./useAuth";
 
 interface ExtokenAccountContextValue {
   data: MyAccountResponse | null;
@@ -22,6 +23,7 @@ const ExtokenAccountContext =
 export const ExtokenAccountProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
+  const { isLoggedIn } = useAuth();
   const [data, setData] = useState<MyAccountResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
@@ -40,8 +42,15 @@ export const ExtokenAccountProvider: React.FC<{
   }, []);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setData(null);
+      setError(false);
+      setLoading(false);
+      return;
+    }
+
     load();
-  }, [load]);
+  }, [isLoggedIn, load]);
 
   return (
     <ExtokenAccountContext.Provider

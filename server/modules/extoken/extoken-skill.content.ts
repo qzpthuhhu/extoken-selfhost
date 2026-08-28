@@ -1,4 +1,7 @@
-const GATEWAY_API_KEY = 'Ox7WYVxpcwiBJ0LIRDP9-UpY5g6q-TKrQQx-bNI6BA8';
+const GATEWAY_API_KEY =
+  process.env.PUBLIC_OPENAPI_GATEWAY_TOKEN?.trim() ||
+  process.env.OPENAPI_GATEWAY_TOKEN?.trim() ||
+  'REPLACE_WITH_PUBLIC_OPENAPI_GATEWAY_TOKEN';
 
 const EXTOKEN_SKILL_TEMPLATE = `---
 name: extoken
@@ -15,16 +18,19 @@ extoken（Agent 交换站）是一个让 **AI 编码 Agent 之间安全传递任
 
 核心概念：
 
-- **包（package）**：一次打包产生的加密上下文，含标题、简介和若干内容块。
-- **内容块（item）**：包里的一个片段，有类型（chat 聊天记录 / doc 过程文档 / config Agent 配置）、标题、正文。
+- **包（package）**：一次打包产生的加密上下文，含标题、简介、接续状态、工作区身份、完整性证明和若干内容块。
+- **上下文协议（schema v1）**：Extoken 的标准化交接结构，借鉴 Agent Runtime 事件日志思想，把消息、工具结果、决策、待办、环境和错误分类型保存，方便接手方恢复任务。
+- **内容块（item）**：包里的一个片段，有类型、标题、正文和可选 metadata。
+  - 基础类型：chat 聊天记录 / doc 过程文档 / config Agent 配置
+  - Runtime 类型：file_diff 文件改动 / decision 决策 / todo 待办 / tool_result 工具结果 / env_note 环境说明 / error 错误记录 / token_usage Token 用量 / permission 权限记录
 - **EXtoken取件码（code）**：形如 \`EXT-XXXX-XXXX-XXXX\`，是取件的唯一凭证。
-- **账号（account）**：由 extoken 网站的飞书登录用户持有，用一个 extoken API Key（\`exk_\` 前缀）标识。打包和取件都会自动归属到该账号，用户可在网站的「交换记录」页看到这个 Agent 后续的所有发包与取包。
+- **账号（account）**：由 extoken 本站登录用户持有，用一个 extoken API Key（\`exk_\` 前缀）标识。打包和取件都会自动归属到该账号，用户可在网站的「交换记录」页看到这个 Agent 后续的所有发包与取包。
 
 ## 认证：两个请求头
 
-本服务部署在飞书 aPaaS 上，对外调用统一走 **\`/openapi\` 开放网关**。每个请求带两个请求头：
+本服务为私有化自托管部署，对外调用统一走 **\`/openapi\` 开放网关**。每个请求带两个请求头：
 
-1. **网关 API Key（\`Authorization\` 请求头，\`Bearer\` 前缀）** —— 让请求穿透 aPaaS 网关、无需飞书登录。这是**服务方公开内置的固定值**，已经写在下面每个示例里，照抄即可，不用申请：
+1. **网关 API Key（\`Authorization\` 请求头，\`Bearer\` 前缀）** —— 免 SSO 登录即可访问。这是**服务方公开内置的固定值**，已经写在下面每个示例里，照抄即可，不用申请：
 
 \`\`\`
 Authorization: Bearer GATEWAY_API_KEY
@@ -32,7 +38,7 @@ Authorization: Bearer GATEWAY_API_KEY
 
 2. **extoken API Key（\`x-extoken-key\` 请求头，\`exk_\` 前缀）** —— 标识账号归属。**这个 key 由用户提供**：用户登录 extoken 网站首页后会看到自己的专属 API Key，复制给你即可。你无需、也无法自行注册账号。除获取说明外的接口都要带这个头。
 
-> ⚠️ **网关凭证必须放在 \`Authorization: Bearer <网关Key>\` 头里，不要用 \`X-Api-Key\` 头**——aPaaS 开放网关只认 \`Authorization\`，用 \`X-Api-Key\` 会持续返回 \`Invalid Request: missing or invalid Authorization header\`（403）。这不是偶发、也不是缺登录态，就是头位置放错了，照上面示例用 \`Authorization: Bearer\` 即可。
+> ⚠️ **网关凭证必须放在 \`Authorization: Bearer <网关Key>\` 头里，不要用 \`X-Api-Key\` 头**——开放网关只认 \`Authorization\`，用 \`X-Api-Key\` 会持续返回 \`Invalid Request: missing or invalid Authorization header\`（403）。这不是偶发、也不是缺登录态，就是头位置放错了，照上面示例用 \`Authorization: Bearer\` 即可。
 
 > 约定：下文 \`API_BASE\` 指本应用地址，如 \`https://<your-app-host>\`。所有请求路径形如 \`API_BASE/openapi/extoken/...\`。
 
@@ -71,11 +77,24 @@ Authorization: Bearer GATEWAY_API_KEY
    - **仅当用户明确要求**保留某项敏感信息时才入包，且入包前提示「打包后任何持有 EXtoken取件码的人都能取回这些凭证」的风险。
    - 你自己使用的 extoken API Key（\`exk_\` 前缀）等接入凭证，任何情况下都不主动入包。
 3. **确认范围**：确认要打包哪些内容块。每块含：
-   - \`type\`：\`chat\`（聊天记录）| \`doc\`（过程文档）| \`config\`（Agent 配置）
+   - \`type\`：优先使用 \`chat\`、\`doc\`、\`config\`、\`file_diff\`、\`decision\`、\`todo\`、\`tool_result\`、\`env_note\`、\`error\`、\`token_usage\`、\`permission\`
    - \`title\`：标题
    - \`content\`：正文
-4. **确认元信息**：包标题、可选说明、有效期天数（0 = 永久）。
-5. **调用打包接口**（带两层 key，\`x-extoken-key\` 用用户给你的那个）：
+   - \`metadata\`：可选，放机器可读信息，例如文件路径、命令、hash、风险等级
+4. **补齐接续语义**：
+   - \`continuation.sourceAgent\`：当前 Agent 名称，如 Trae / Codex / Cursor
+   - \`continuation.sourceSessionId\` / \`sourceRunId\` / \`sourceTurnId\`：如果当前环境能拿到就填，拿不到留空
+   - \`continuation.handoffStatus\`：\`ready\` / \`in_progress\` / \`blocked\` / \`needs_review\` / \`archived\`
+   - \`continuation.nextActions\`：接手 Agent 应优先执行的下一步
+   - \`continuation.blockingState\`：若阻塞，写明阻塞条件和需要谁提供什么
+5. **补齐工作区身份与完整性证明**：
+   - \`workspace.projectName\`、\`gitRemote\`、\`gitBranch\`、\`gitCommit\`、\`dirtyFilesHash\`
+   - \`integrity.filesHash\`：关键文件列表或摘要的 SHA256
+   - \`integrity.commandHash\`：关键命令/输出摘要的 SHA256
+   - \`integrity.taskStateHash\`：任务状态摘要的 SHA256
+   - \`integrity.toolOperations\`：重要工具调用，包含 \`toolName\`、\`canonicalArgsHash\`、\`recoveryMode\`、\`summary\`
+6. **确认元信息**：包标题、可选说明、有效期天数（0 = 永久）。
+7. **调用打包接口**（带两层 key，\`x-extoken-key\` 用用户给你的那个）：
 
 \`\`\`http
 POST API_BASE/openapi/extoken
@@ -87,10 +106,42 @@ x-extoken-key: exk_xxxxxxxx...
   "title": "登录模块重构上下文",
   "description": "给下一个 Agent 的交接",
   "expiresInDays": 7,
+  "continuation": {
+    "sourceAgent": "Trae",
+    "sourceSessionId": "session-xxx",
+    "sourceRunId": "run-xxx",
+    "sourceTurnId": "turn-xxx",
+    "handoffStatus": "ready",
+    "nextActions": ["运行 npm run type:check", "继续实现剩余表单校验"],
+    "blockingState": ""
+  },
+  "workspace": {
+    "projectName": "extoken",
+    "rootHash": "sha256:...",
+    "gitRemote": "https://github.com/owner/repo.git",
+    "gitBranch": "main",
+    "gitCommit": "abcdef...",
+    "dirtyFilesHash": "sha256:..."
+  },
+  "integrity": {
+    "filesHash": "sha256:...",
+    "commandHash": "sha256:...",
+    "taskStateHash": "sha256:...",
+    "toolOperations": [
+      {
+        "toolName": "Shell",
+        "canonicalArgsHash": "sha256:...",
+        "recoveryMode": "never_auto_retry",
+        "summary": "运行类型检查，无外部副作用"
+      }
+    ]
+  },
   "items": [
     { "type": "chat", "title": "需求澄清对话", "content": "..." },
-    { "type": "doc",  "title": "设计笔记",     "content": "..." },
-    { "type": "config","title": "Agent 配置",  "content": "{...}" }
+    { "type": "decision", "title": "架构决策", "content": "..." },
+    { "type": "file_diff", "title": "关键改动", "content": "..." },
+    { "type": "todo", "title": "下一步", "content": "..." },
+    { "type": "config", "title": "Agent 配置", "content": "{...}" }
   ]
 }
 \`\`\`
@@ -98,7 +149,7 @@ x-extoken-key: exk_xxxxxxxx...
 4. **返回EXtoken取件码**，交给用户转发（若上一步确认为分享给他人，再次提醒通过安全渠道传递）：
 
 \`\`\`json
-{ "id": "...", "code": "EXT-XXXX-XXXX-XXXX", "itemCount": 3, "expiresAt": "..." }
+{ "id": "...", "code": "EXT-XXXX-XXXX-XXXX", "itemCount": 5, "expiresAt": "...", "schemaVersion": 1, "contentSha256": "..." }
 \`\`\`
 
 ### 取件
@@ -121,9 +172,43 @@ x-extoken-key: exk_xxxxxxxx...
   "title": "...",
   "description": "...",
   "items": [ { "type": "chat", "title": "...", "content": "..." } ],
+  "schemaVersion": 1,
+  "continuation": {
+    "sourceAgent": "Trae",
+    "handoffStatus": "ready",
+    "nextActions": ["..."],
+    "blockingState": ""
+  },
+  "workspace": {
+    "projectName": "extoken",
+    "gitBranch": "main",
+    "gitCommit": "abcdef..."
+  },
+  "integrity": {
+    "payloadSha256": "...",
+    "toolOperations": []
+  },
   "createdAt": "...",
   "downloadCount": 1
 }
+\`\`\`
+
+接手后优先阅读 \`continuation\`、\`workspace\`、\`integrity\`，再把 \`items\` 注入上下文继续工作。若当前工作区的 git remote / branch / commit 与包内不一致，先提示用户确认是否要继续。
+
+### CLI（可选）
+
+如果运行环境能执行本项目提供的 CLI，可使用：
+
+\`\`\`bash
+EXTOKEN_API_BASE="https://<your-app-host>" \\
+EXTOKEN_GATEWAY_TOKEN="..." \\
+EXTOKEN_API_KEY="exk_..." \\
+npm run extoken -- pack handoff.json
+
+EXTOKEN_API_BASE="https://<your-app-host>" \\
+EXTOKEN_GATEWAY_TOKEN="..." \\
+EXTOKEN_API_KEY="exk_..." \\
+npm run extoken -- redeem EXT-XXXX-XXXX-XXXX --out package.json
 \`\`\`
 
 用户可在 extoken 网站的「交换记录」页查看该账号下所有发出的包（含EXtoken取件码）和取用过的包。
@@ -131,6 +216,9 @@ x-extoken-key: exk_xxxxxxxx...
 ## 安全说明
 
 - 内容用 **AES-256-GCM** 加密存储，密钥由EXtoken取件码经 **PBKDF2** 派生。
+- 新版本会优先把取件码以服务端 escrow 加密形式保存，避免数据库直接落明文 code；旧包仍保持兼容。
+- 新生成 / 轮换的 extoken API Key 只在响应里显示一次，服务端只保存 hash 与前缀；旧数据仍兼容 hash 与历史明文字段。
+- 服务端会记录创建、取件、下载、失败、过期、权限拒绝、Key 轮换等事实事件，便于审计和异常追踪。
 - EXtoken取件码即凭证，任何持码者都能取件，请通过安全渠道传递。
 - 网关 API Key 是服务方公开的接入凭证，仅用于穿透网关、不代表任何身份；真正代表账号身份的是用户给你的 extoken API Key（\`exk_\` 前缀），勿写入会被分享的聊天/文档里。
 `;

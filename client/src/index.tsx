@@ -5,7 +5,7 @@ import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 import { Button } from '@client/src/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
-import RoutesComponent from './app.tsx';
+import RoutesComponent from './app';
 import './index.css';
 import { createPortal } from 'react-dom';
 import { Toaster } from '@client/src/components/ui/sonner';
@@ -13,6 +13,8 @@ import { Toaster } from '@client/src/components/ui/sonner';
 const CLIENT_BASE_PATH = (import.meta.env.BASE_URL as string) || '/';
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const runtimeError = error instanceof Error ? error : new Error(String(error));
+
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <div className="max-w-md w-full glass-panel-strong border-primary/20 rounded-lg p-6 space-y-4">
@@ -23,12 +25,12 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
           <div>
             <div className="font-semibold">页面出错了</div>
             <div className="text-xs text-muted-foreground">
-              {error?.name || 'Runtime Error'}
+              {runtimeError.name || 'Runtime Error'}
             </div>
           </div>
         </div>
         <pre className="text-xs bg-black/40 p-3 rounded-sm overflow-auto max-h-56 text-muted-foreground whitespace-pre-wrap">
-          {error?.stack || error?.message || String(error)}
+          {runtimeError.stack || runtimeError.message}
         </pre>
         <div className="flex gap-2">
           <Button

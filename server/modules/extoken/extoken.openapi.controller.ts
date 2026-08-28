@@ -2,6 +2,7 @@ import { Body, Controller, Get, Header, Headers, Post, UseGuards, Req } from '@n
 import type { Request } from 'express';
 import { ExtokenService } from './extoken.service';
 import { EXTOKEN_SKILL_MARKDOWN } from './extoken-skill.content';
+import { EXTOKEN_PACKAGE_DOC_MARKDOWN } from '../../../shared/extoken-package-doc';
 import type { CreateExtokenRequest, RedeemExtokenRequest } from '../../../shared/api.interface';
 import { OpenapiGatewayGuard } from './extoken.openapi.guard';
 import { extractBearerToken } from '../auth/auth.middleware';
@@ -22,6 +23,12 @@ export class ExtokenOpenApiController {
   @Header('Content-Type', 'text/markdown; charset=utf-8')
   skill(): string {
     return EXTOKEN_SKILL_MARKDOWN;
+  }
+
+  @Get('package-doc')
+  @Header('Content-Type', 'text/markdown; charset=utf-8')
+  packageDoc(): string {
+    return EXTOKEN_PACKAGE_DOC_MARKDOWN;
   }
 
   @Post()

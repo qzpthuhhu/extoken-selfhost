@@ -18,8 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import dayjs from "dayjs";
-import { NavLink } from "react-router-dom";
-import { getDataloom } from "@lark-apaas/client-toolkit/dataloom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { Card } from "@client/src/components/ui/card";
 import { Button } from "@client/src/components/ui/button";
@@ -49,7 +48,11 @@ const buildSentCopyText = (pkg: SentPackageItem): string => {
   const lines = [
     `标题：${pkg.title}`,
     `简介：${pkg.description || "（无）"}`,
-    `EXtoken取件码：${pkg.code}`,
+    `EXtoken取件码：${pkg.code || "仅创建时显示，请从原始分享记录获取"}`,
+    `协议版本：v${pkg.schemaVersion}`,
+    `交接状态：${pkg.handoffStatus}`,
+    `来源 Agent：${pkg.sourceAgent || "未标注"}`,
+    `项目：${pkg.workspaceProject || "未标注"}`,
     `发布日期：${dayjs(pkg.createdAt).format("YYYY-MM-DD HH:mm")}`,
     `文件包大小：${pkg.itemCount} 块 · ${formatBytes(pkg.contentSize)}`,
     `有效期：${
@@ -62,6 +65,7 @@ const buildSentCopyText = (pkg: SentPackageItem): string => {
 };
 
 const ExchangeRecordPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data, loading, error } = useExtokenAccount();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedFull, setCopiedFull] = useState<string | null>(null);
@@ -83,9 +87,8 @@ const ExchangeRecordPage: React.FC = () => {
     }
   };
 
-  const handleLogin = async () => {
-    const dataloom = await getDataloom();
-    dataloom.service.session.redirectToLogin();
+  const handleLogin = () => {
+    navigate('/login');
   };
 
   const copyText = async (
@@ -103,6 +106,10 @@ const ExchangeRecordPage: React.FC = () => {
   };
 
   const copyCode = (code: string) => {
+    if (!code) {
+      toast.error("该包未保存明文取件码，请从创建时返回的信息中获取");
+      return;
+    }
     copyText(
       code,
       () => {
@@ -173,7 +180,7 @@ const ExchangeRecordPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
         {header}
         <Card className="p-6 border border-border rounded-sm bg-card">
           <p className="text-sm text-muted-foreground">加载记录中...</p>
@@ -184,14 +191,14 @@ const ExchangeRecordPage: React.FC = () => {
 
   if (error || !data) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
         {header}
         <Card className="p-6 border border-border rounded-sm bg-card flex flex-col items-center gap-4 text-center">
           <ShieldAlert className="size-8 text-primary" />
-          <p className="text-sm font-medium">请先登录飞书账号查看你的交换记录</p>
+          <p className="text-sm font-medium">请先登录本站账号查看你的交换记录</p>
           <Button className="gap-1" onClick={handleLogin}>
             <LogIn className="size-4" />
-            飞书登录
+            去登录
           </Button>
         </Card>
       </div>
@@ -247,26 +254,29 @@ const ExchangeRecordPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {header}
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)] lg:items-end">
+        {header}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="p-4 border border-border rounded-sm bg-card">
-          <p className="text-xs text-muted-foreground">已发出</p>
-          <p className="text-2xl font-mono font-bold text-primary">
-            {account.sentCount}
-          </p>
-        </Card>
-        <Card className="p-4 border border-border rounded-sm bg-card">
-          <p className="text-xs text-muted-foreground">已取用</p>
-          <p className="text-2xl font-mono font-bold text-[hsl(152_68%_45%)]">
-            {account.receivedCount}
-          </p>
-        </Card>
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="p-4 border border-border rounded-sm bg-card/85 backdrop-blur-sm">
+            <p className="text-xs text-muted-foreground">已发出</p>
+            <p className="text-2xl font-mono font-bold text-primary">
+              {account.sentCount}
+            </p>
+          </Card>
+          <Card className="p-4 border border-border rounded-sm bg-card/85 backdrop-blur-sm">
+            <p className="text-xs text-muted-foreground">已取用</p>
+            <p className="text-2xl font-mono font-bold text-[hsl(152_68%_45%)]">
+              {account.receivedCount}
+            </p>
+          </Card>
+        </div>
       </div>
 
-      <Card className="p-3 border border-border rounded-sm bg-card space-y-3">
-        <div className="relative">
+      <Card className="p-3 border border-border rounded-sm bg-card/85 backdrop-blur-sm">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             value={keyword}
@@ -274,8 +284,8 @@ const ExchangeRecordPage: React.FC = () => {
             placeholder="搜索标题或简介"
             className="pl-8"
           />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
@@ -314,11 +324,12 @@ const ExchangeRecordPage: React.FC = () => {
               清除筛选
             </Button>
           )}
+          </div>
         </div>
       </Card>
 
       <Tabs defaultValue="sent">
-        <TabsList className="grid grid-cols-2 w-full">
+        <TabsList className="grid grid-cols-2 w-full overflow-hidden">
           <TabsTrigger value="sent" className="gap-1.5">
             <Send className="size-4" />
             已发出的包
@@ -337,7 +348,7 @@ const ExchangeRecordPage: React.FC = () => {
           {filteredSent.length === 0 ? (
             renderEmpty("sent", hasFilter)
           ) : (
-            <div className="space-y-2">
+            <div className="grid gap-3 xl:grid-cols-2">
               {filteredSent.map((pkg) => {
                 const expanded = expandedId === pkg.id;
                 return (
@@ -345,7 +356,7 @@ const ExchangeRecordPage: React.FC = () => {
                     key={pkg.id}
                     className="p-3 border border-border rounded-sm bg-card space-y-2"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
                           {pkg.title}
@@ -364,9 +375,19 @@ const ExchangeRecordPage: React.FC = () => {
                         被取 {pkg.downloadCount} 次
                       </Badge>
                     </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant="outline">v{pkg.schemaVersion}</Badge>
+                      <Badge variant="outline">{pkg.handoffStatus}</Badge>
+                      {pkg.sourceAgent && (
+                        <Badge variant="outline">{pkg.sourceAgent}</Badge>
+                      )}
+                      {pkg.workspaceProject && (
+                        <Badge variant="outline">{pkg.workspaceProject}</Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 px-2 py-1 rounded-sm bg-background border border-border font-mono text-xs break-all">
-                        {pkg.code}
+                        {pkg.code || "取件码仅创建时显示"}
                       </code>
                       <Button
                         variant="outline"
@@ -377,6 +398,7 @@ const ExchangeRecordPage: React.FC = () => {
                             : ""
                         }`}
                         onClick={() => copyCode(pkg.code)}
+                        disabled={!pkg.code}
                         aria-label="复制 EXtoken取件码"
                       >
                         {copiedCode === pkg.code ? (
@@ -386,15 +408,15 @@ const ExchangeRecordPage: React.FC = () => {
                         )}
                       </Button>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-muted-foreground font-mono">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <p className="text-xs text-muted-foreground font-mono leading-5">
                         {pkg.itemCount} 块 · {formatBytes(pkg.contentSize)} ·{" "}
                         {dayjs(pkg.createdAt).format("YYYY-MM-DD HH:mm")}
                         {pkg.expiresAt
                           ? ` · 至 ${dayjs(pkg.expiresAt).format("YYYY-MM-DD")}`
                           : " · 永久"}
                       </p>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1 sm:shrink-0">
                         {pkg.description && (
                           <Button
                             variant="ghost"
@@ -456,7 +478,7 @@ const ExchangeRecordPage: React.FC = () => {
           {filteredReceived.length === 0 ? (
             renderEmpty("received", hasFilter)
           ) : (
-            <div className="space-y-2">
+            <div className="grid gap-3 xl:grid-cols-2">
               {filteredReceived.map((item) => {
                 const expanded = expandedId === item.id;
                 return (
@@ -464,7 +486,7 @@ const ExchangeRecordPage: React.FC = () => {
                     key={item.id}
                     className="p-3 border border-border rounded-sm bg-card"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
                           {item.packageTitle}
@@ -483,7 +505,7 @@ const ExchangeRecordPage: React.FC = () => {
                           {dayjs(item.redeemedAt).format("YYYY-MM-DD HH:mm")}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1 sm:shrink-0">
                         {item.packageDescription && (
                           <Button
                             variant="ghost"

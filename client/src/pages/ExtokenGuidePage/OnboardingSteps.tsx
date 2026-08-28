@@ -17,7 +17,7 @@ interface OnboardingStep {
 const STEPS: OnboardingStep[] = [
   {
     title: "创建专属账户",
-    desc: "飞书登录后已自动生成，下方即为你的账号与 Key",
+    desc: "完成登录后自动生成，下方即为你的账号与 Key",
   },
   {
     title: "复制接入指令给 Agent",

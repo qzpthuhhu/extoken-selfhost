@@ -1,11 +1,21 @@
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash, createDecipheriv } from 'crypto';
 import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { desc, eq, sql, gte, count } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 import { DRIZZLE_DATABASE, PostgresJsDb } from '../../database/drizzle.module';
-import { extokenAccount, extokenPackage, extokenRedemption } from '../../database/schema';
-import type { AccountProfile, AdminOverviewResponse, MyAccountResponse } from '../../../shared/api.interface';
+import {
+  extokenAccount,
+  extokenPackage,
+  extokenPackageEvent,
+  extokenRedemption,
+} from '../../database/schema';
+import type {
+  AccountProfile,
+  AdminOverviewResponse,
+  MyAccountResponse,
+  RotateApiKeyResponse,
+} from '../../../shared/api.interface';
 
 const API_KEY_PREFIX = 'exk_';
 
@@ -45,16 +55,17 @@ export class ExtokenAccountService {
       .values({
         userId,
         name,
-        apiKey,
+        apiKey: '',
         apiKeyHash: this.hashApiKey(apiKey),
         apiKeyPrefix: apiKey.slice(0, 12),
+        apiKeyLastRotatedAt: new Date(),
         creatorUserId: null, // 与飞书脱钩，清空
         creatorName: name,
         registerSource: 'web',
       })
       .returning();
     this.logger.log(`extoken account created for selfhost user id=${userId} username=${username}`);
-    return inserted[0];
+    return { ...inserted[0], apiKey };
   }
 
   async resolveByKey(apiKey: string | undefined): Promise<typeof extokenAccount.$inferSelect> {
@@ -103,11 +114,15 @@ export class ExtokenAccountService {
       .where(eq(extokenAccount.id, accountId));
   }
 
-  private toProfile(row: typeof extokenAccount.$inferSelect): AccountProfile {
+  private toProfile(row: typeof extokenAccount.$inferSelect, oneTimeApiKey = ''): AccountProfile {
     return {
       id: row.id,
       name: row.name,
-      apiKey: row.apiKey,
+      apiKey: oneTimeApiKey || row.apiKey || '',
+      apiKeyPrefix: row.apiKeyPrefix,
+      apiKeyLastRotatedAt: row.apiKeyLastRotatedAt
+        ? new Date(row.apiKeyLastRotatedAt).toISOString()
+        : null,
       sentCount: row.sentCount,
       receivedCount: row.receivedCount,
       createdAt: new Date(row.createdAt).toISOString(),
@@ -155,6 +170,13 @@ export class ExtokenAccountService {
 
   async myAccount(user: { userId: string; username: string; nickname?: string | null }): Promise<MyAccountResponse> {
     const account = await this.getOrCreateForSelfhostUser(user);
+    const oneTimeApiKey = account.apiKey || '';
+    if (oneTimeApiKey) {
+      await this.db
+        .update(extokenAccount)
+        .set({ apiKey: '', updatedAt: new Date() })
+        .where(eq(extokenAccount.id, account.id));
+    }
     const packager = alias(extokenAccount, 'packager');
 
     const sentRows = await this.db
@@ -168,6 +190,13 @@ export class ExtokenAccountService {
         downloadCount: extokenPackage.downloadCount,
         expiresAt: extokenPackage.expiresAt,
         createdAt: extokenPackage.createdAt,
+        schemaVersion: extokenPackage.schemaVersion,
+        handoffStatus: extokenPackage.handoffStatus,
+        sourceAgent: extokenPackage.sourceAgent,
+        workspaceProject: extokenPackage.workspaceProject,
+        codeCipherText: extokenPackage.codeCipherText,
+        codeIv: extokenPackage.codeIv,
+        codeAuthTag: extokenPackage.codeAuthTag,
       })
       .from(extokenPackage)
       .where(eq(extokenPackage.ownerAccountId, account.id))
@@ -191,10 +220,16 @@ export class ExtokenAccountService {
       .limit(100);
 
     return {
-      account: this.toProfile(account),
+      account: this.toProfile(account, oneTimeApiKey),
       sent: sentRows.map((r) => ({
         id: r.id,
-        code: r.code,
+        code: this.decryptEscrowedCode({
+          code: r.code,
+          codeCipherText: r.codeCipherText,
+          codeIv: r.codeIv,
+          codeAuthTag: r.codeAuthTag,
+        }),
+        schemaVersion: r.schemaVersion as 1,
         title: r.title,
         description: r.description,
         itemCount: r.itemCount,
@@ -202,6 +237,9 @@ export class ExtokenAccountService {
         downloadCount: r.downloadCount,
         expiresAt: r.expiresAt ? new Date(r.expiresAt).toISOString() : null,
         createdAt: new Date(r.createdAt).toISOString(),
+        handoffStatus: (r.handoffStatus || 'ready') as any,
+        sourceAgent: r.sourceAgent || '',
+        workspaceProject: r.workspaceProject || '',
       })),
       received: receivedRows.map((r) => ({
         id: r.id,
@@ -216,5 +254,89 @@ export class ExtokenAccountService {
 
   private hashApiKey(key: string): string {
     return createHash('sha256').update(key.trim()).digest('hex');
+  }
+
+  private escrowKey(): Buffer | null {
+    const secret =
+      process.env.EXTOKEN_CODE_ESCROW_SECRET?.trim() ||
+      process.env.JWT_SECRET?.trim() ||
+      process.env.OPENAPI_GATEWAY_TOKEN?.trim() ||
+      '';
+    if (!secret) return null;
+    return createHash('sha256').update(secret).digest();
+  }
+
+  private decryptEscrowedCode(row: {
+    code: string;
+    codeCipherText: string;
+    codeIv: string;
+    codeAuthTag: string;
+  }): string {
+    if (row.code) return row.code;
+    if (!row.codeCipherText || !row.codeIv || !row.codeAuthTag) return '';
+    const key = this.escrowKey();
+    if (!key) return '';
+    try {
+      const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(row.codeIv, 'base64'));
+      decipher.setAuthTag(Buffer.from(row.codeAuthTag, 'base64'));
+      return Buffer.concat([
+        decipher.update(Buffer.from(row.codeCipherText, 'base64')),
+        decipher.final(),
+      ]).toString('utf8');
+    } catch (error) {
+      this.logger.warn(`failed to decrypt extoken code escrow: ${String(error)}`);
+      return '';
+    }
+  }
+
+  async rotateApiKey(user: {
+    userId: string;
+    username: string;
+    nickname?: string | null;
+  }): Promise<RotateApiKeyResponse> {
+    const account = await this.getOrCreateForSelfhostUser(user);
+    const apiKey = this.generateKey();
+    const now = new Date();
+    const rows = await this.db
+      .update(extokenAccount)
+      .set({
+        apiKey: '',
+        apiKeyHash: this.hashApiKey(apiKey),
+        apiKeyPrefix: apiKey.slice(0, 12),
+        apiKeyLastRotatedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(extokenAccount.id, account.id))
+      .returning();
+
+    const updated = rows[0] ?? account;
+    await this.recordAccountEvent({
+      accountId: updated.id,
+      actorUserId: user.userId,
+      eventType: 'api_key_rotated',
+      metadata: { apiKeyPrefix: updated.apiKeyPrefix },
+    });
+    return {
+      account: this.toProfile(updated, apiKey),
+      apiKey,
+    };
+  }
+
+  private async recordAccountEvent(input: {
+    accountId: string;
+    actorUserId?: string | null;
+    eventType: string;
+    metadata?: unknown;
+  }): Promise<void> {
+    try {
+      await this.db.insert(extokenPackageEvent).values({
+        accountId: input.accountId,
+        actorUserId: input.actorUserId || null,
+        eventType: input.eventType,
+        metadata: JSON.stringify(input.metadata ?? {}),
+      });
+    } catch (error) {
+      this.logger.warn(`failed to record extoken account event: ${String(error)}`);
+    }
   }
 }

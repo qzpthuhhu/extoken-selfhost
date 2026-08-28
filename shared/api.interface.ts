@@ -1,13 +1,85 @@
 /* 前后端共享的类型写在这里 */
 
-/* ============ extoken 内容块 ============ */
+/* ============ extoken 内容块 / 上下文协议 ============ */
 
-export type ExtokenItemType = 'chat' | 'doc' | 'config';
+export const EXTOKEN_PACKAGE_SCHEMA_VERSION = 1;
+
+export type ExtokenItemType =
+  | 'chat'
+  | 'doc'
+  | 'config'
+  | 'file_diff'
+  | 'decision'
+  | 'todo'
+  | 'tool_result'
+  | 'env_note'
+  | 'error'
+  | 'token_usage'
+  | 'permission';
 
 export interface ExtokenItem {
   type: ExtokenItemType;
   title: string;
   content: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type ExtokenHandoffStatus =
+  | 'ready'
+  | 'in_progress'
+  | 'blocked'
+  | 'needs_review'
+  | 'archived';
+
+export type ExtokenToolRecoveryMode =
+  | 'replay_safe'
+  | 'idempotent'
+  | 'reconcile'
+  | 'reattach'
+  | 'outcome_unknown'
+  | 'never_auto_retry';
+
+export interface ExtokenWorkspaceIdentity {
+  projectName?: string;
+  rootHash?: string;
+  gitRemote?: string;
+  gitBranch?: string;
+  gitCommit?: string;
+  dirtyFilesHash?: string;
+}
+
+export interface ExtokenIntegrityProof {
+  payloadSha256?: string;
+  filesHash?: string;
+  commandHash?: string;
+  taskStateHash?: string;
+  toolOperations?: Array<{
+    toolName: string;
+    canonicalArgsHash?: string;
+    recoveryMode?: ExtokenToolRecoveryMode;
+    summary?: string;
+  }>;
+}
+
+export interface ExtokenContinuationContext {
+  sourceAgent?: string;
+  sourceSessionId?: string;
+  sourceRunId?: string;
+  sourceTurnId?: string;
+  handoffStatus?: ExtokenHandoffStatus;
+  nextActions?: string[];
+  blockingState?: string;
+}
+
+export interface ExtokenPackageEnvelope {
+  schemaVersion: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
+  createdAt: string;
+  title: string;
+  description: string;
+  continuation: ExtokenContinuationContext;
+  workspace: ExtokenWorkspaceIdentity;
+  integrity: ExtokenIntegrityProof;
+  items: ExtokenItem[];
 }
 
 export interface CreateExtokenRequest {
@@ -15,6 +87,10 @@ export interface CreateExtokenRequest {
   description?: string;
   items: ExtokenItem[];
   expiresInDays?: number;
+  schemaVersion?: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
+  continuation?: ExtokenContinuationContext;
+  workspace?: ExtokenWorkspaceIdentity;
+  integrity?: ExtokenIntegrityProof;
 }
 
 export interface CreateExtokenResponse {
@@ -23,6 +99,8 @@ export interface CreateExtokenResponse {
   title: string;
   itemCount: number;
   expiresAt: string | null;
+  schemaVersion: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
+  contentSha256: string;
 }
 
 export interface RedeemExtokenRequest {
@@ -35,6 +113,10 @@ export interface RedeemExtokenResponse {
   items: ExtokenItem[];
   createdAt: string;
   downloadCount: number;
+  schemaVersion: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
+  continuation: ExtokenContinuationContext;
+  workspace: ExtokenWorkspaceIdentity;
+  integrity: ExtokenIntegrityProof;
 }
 
 export interface PackageDownloadResponse {
@@ -42,6 +124,10 @@ export interface PackageDownloadResponse {
   description: string;
   items: ExtokenItem[];
   createdAt: string;
+  schemaVersion: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
+  continuation: ExtokenContinuationContext;
+  workspace: ExtokenWorkspaceIdentity;
+  integrity: ExtokenIntegrityProof;
 }
 
 /* ============ 我的账户与交换记录 ============ */
@@ -50,6 +136,8 @@ export interface AccountProfile {
   id: string;
   name: string;
   apiKey: string;
+  apiKeyPrefix: string;
+  apiKeyLastRotatedAt: string | null;
   sentCount: number;
   receivedCount: number;
   createdAt: string;
@@ -59,6 +147,7 @@ export interface AccountProfile {
 export interface SentPackageItem {
   id: string;
   code: string;
+  schemaVersion: typeof EXTOKEN_PACKAGE_SCHEMA_VERSION;
   title: string;
   description: string;
   itemCount: number;
@@ -66,6 +155,9 @@ export interface SentPackageItem {
   downloadCount: number;
   expiresAt: string | null;
   createdAt: string;
+  handoffStatus: ExtokenHandoffStatus;
+  sourceAgent: string;
+  workspaceProject: string;
 }
 
 export interface ReceivedPackageItem {
@@ -81,6 +173,11 @@ export interface MyAccountResponse {
   account: AccountProfile;
   sent: SentPackageItem[];
   received: ReceivedPackageItem[];
+}
+
+export interface RotateApiKeyResponse {
+  account: AccountProfile;
+  apiKey: string;
 }
 
 /* ============ 管理台（仅管理员） ============ */
@@ -234,4 +331,11 @@ export interface ProjectUpdatesResponse {
   generatedAt: string;
   announcements: AnnouncementItem[];
   roadmap: RoadmapItem[];
+}
+
+/* --- 公开配置：前端拿不到 window.__platform__ 时的 HTTP 回退 --- */
+
+export interface PublicConfigResponse {
+  appName: string;
+  publicOpenapiGatewayToken: string;
 }

@@ -10,7 +10,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ExtokenModule } from './modules/extoken/extoken.module';
 import { SiteModule } from './modules/site/site.module';
 import { ViewModule } from './modules/view/view.module';
-import { HelloModule } from './modules/hello/hello.module';
 
 @Module({
   imports: [
@@ -41,7 +40,6 @@ import { HelloModule } from './modules/hello/hello.module';
     // ====== 业务模块 ======
     ExtokenModule,
     SiteModule,
-    HelloModule,
 
     // ⚠️ ViewModule 是兜底路由模块，必须放在最后
     ViewModule,

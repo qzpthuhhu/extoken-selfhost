@@ -7,10 +7,7 @@ import type { AuthRole, AuthUserPayload } from './auth.types';
 
 export function extractBearerToken(req: Request): string | undefined {
   const header = req.headers.authorization ?? '';
-  if (!header) {
-    const q = (req.query.token as string) || (req.query.access_token as string);
-    return q || undefined;
-  }
+  if (!header) return undefined;
   if (/^Bearer\s+/i.test(header)) return header.slice(7).trim();
   if (/^Token\s+/i.test(header)) return header.slice(6).trim();
   return header.trim();
