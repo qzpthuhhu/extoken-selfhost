@@ -1,10 +1,12 @@
 # Extoken Selfhost
 
+English | [简体中文](README.zh-CN.md)
+
 Extoken is an encrypted context package system for handing off work between AI agents.
 
-官网：<https://extoken.aishangai.shop>
+Official website: <https://extoken.aishangai.shop>
 
-Extoken 用来解决一个很具体的问题：一个 Agent 已经理解了目标、代码库、错误现场和下一步动作，但当任务切到另一个 Agent、IDE、会话或自动化环境时，这些上下文经常丢失。Extoken 把任务现场打包成可审计、可取件、可被 Agent 读取的上下文包。
+Extoken solves a specific workflow problem: one Agent may already understand the goal, codebase, error state, decisions, and next actions, but that context is often lost when work moves to another Agent, IDE, session, or automation environment. Extoken packages the working state into an auditable, redeemable, Agent-readable context package.
 
 ## What It Does
 
