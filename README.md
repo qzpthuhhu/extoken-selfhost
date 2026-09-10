@@ -1,33 +1,34 @@
 # Extoken Selfhost
 
-Extoken 是一个私有化自托管的 Agent 上下文交换站，用于在不同 AI 编码 Agent、IDE 和自动化环境之间安全传递任务上下文。
+Extoken is an encrypted context package system for handing off work between AI agents.
 
-官网地址：<https://extoken.aishangai.shop>
+官网：<https://extoken.aishangai.shop>
 
-## 核心能力
+Extoken 用来解决一个很具体的问题：一个 Agent 已经理解了目标、代码库、错误现场和下一步动作，但当任务切到另一个 Agent、IDE、会话或自动化环境时，这些上下文经常丢失。Extoken 把任务现场打包成可审计、可取件、可被 Agent 读取的上下文包。
 
-- **Extoken 包协议**：把任务现场整理为版本化 Envelope，包含 `continuation`、`workspace`、`integrity` 和类型化 `items`。
-- **跨 Agent 交接**：通过取件码把上下文交给另一个 Agent，接手方可恢复目标、决策、待办、错误现场和下一步动作。
-- **事件日志事实源**：记录创建、取件、下载、失败、过期、权限拒绝等事件，便于审计、统计和排障。
-- **邮箱账号体系**：支持邮箱验证码注册、邮箱或用户名登录、邮箱验证码改密。
-- **双层开放网关**：外部 Agent 调用 `/openapi/extoken/*` 时使用网关 Bearer Token + 用户 Extoken API Key。
-- **Agent 可读文档**：包协议说明可直接以 Markdown 读取，不需要解析网页 DOM。
+## What It Does
 
-## 线上入口
+- **Context package protocol**: packages task state into a versioned envelope with `continuation`, `workspace`, `integrity`, and typed `items`.
+- **Cross-agent handoff**: transfers context through pickup codes so another Agent can continue from the same goal, decisions, errors, and next actions.
+- **Encrypted exchange**: stores encrypted package payloads and uses expiration, pickup limits, and event logs around the exchange flow.
+- **Agent-readable docs**: exposes the package protocol as Markdown so agents do not need to parse a web page.
+- **Self-hostable app**: includes a React frontend, NestJS backend, PostgreSQL schema, email login, API keys, and open gateway endpoints.
 
-- 官网首页：<https://extoken.aishangai.shop>
-- Extoken 包机制：<https://extoken.aishangai.shop/package>
-- 使用案例：<https://extoken.aishangai.shop/use-cases>
-- 收发记录：<https://extoken.aishangai.shop/records>
-- Agent 包协议 Markdown：<https://extoken.aishangai.shop/api/extoken/package-doc>
+## Live Site
 
-Agent 可直接读取：
+- Home: <https://extoken.aishangai.shop>
+- Package protocol: <https://extoken.aishangai.shop/package>
+- Use cases: <https://extoken.aishangai.shop/use-cases>
+- Exchange records: <https://extoken.aishangai.shop/records>
+- Agent Markdown doc: <https://extoken.aishangai.shop/api/extoken/package-doc>
+
+Agents can read the public protocol document directly:
 
 ```bash
 curl -L https://extoken.aishangai.shop/api/extoken/package-doc
 ```
 
-已接入开放网关的 Agent 可以读取：
+Agents integrated with the open gateway can use:
 
 ```bash
 curl -L \
@@ -35,14 +36,50 @@ curl -L \
   https://extoken.aishangai.shop/openapi/extoken/package-doc
 ```
 
-## 技术栈
+## Package Model
+
+An Extoken package is a handoff artifact. At minimum it should describe:
+
+- package title, summary, protocol version, and creation time
+- encrypted context payload
+- pickup code, package ID, owner ID, expiration, and usage policy
+- integrity digest for size, item count, and content completeness checks
+
+A richer package can include:
+
+- conversation notes, unresolved decisions, blockers, and next actions
+- workspace fingerprint, project paths, environment hints, and dependency notes
+- changed files, command results, tool side effects, and recovery strategy
+- source Agent, target Agent, session IDs, run IDs, and event log references
+
+It should not contain plaintext secrets such as passwords, long-lived API keys, SMTP credentials, SSH private keys, cookies, or database connection strings.
+
+## Architecture
+
+```text
+client/       React + Vite frontend
+server/       NestJS API, auth, package exchange, OpenAPI gateway
+shared/       Shared package protocol docs and types
+scripts/      CLI and deployment helpers
+docs/         Supporting project documentation
+```
+
+Core backend areas:
+
+- `server/modules/auth`: email verification, JWT sessions, API keys
+- `server/modules/package`: package creation, pickup, records, event logs
+- `server/modules/openapi`: gateway endpoints for external Agent access
+- `server/database`: PostgreSQL schema and migrations
+
+## Tech Stack
 
 - Frontend: React, Vite, Tailwind CSS 4, Framer Motion
 - Backend: NestJS, Express, PostgreSQL, Drizzle ORM
 - Auth: bcrypt password hash, JWT access token, HttpOnly refresh cookie
 - Mail: SMTP email verification codes
+- Runtime: Node.js 20+, npm 10+
 
-## 本地开发
+## Local Development
 
 ```bash
 npm install
@@ -51,18 +88,35 @@ npm run db:init
 npm run dev
 ```
 
-常用命令：
+Useful commands:
 
 ```bash
 npm run type:check
 npm run build:server
 npm run build:client
 npm run build:prod
+npm run test
 ```
+
+## Environment
+
+Start from `.env.example`. For production email verification, configure SMTP:
+
+```env
+EMAIL_CODE_SECRET=replace-with-a-random-secret
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=no-reply@example.com
+SMTP_PASS=replace-with-provider-password-or-app-code
+SMTP_FROM="Extoken <no-reply@example.com>"
+```
+
+Never commit real `.env` files. The repository ignores `.env`, `.env.*`, build outputs, local Agent state, and zip dumps.
 
 ## CLI
 
-仓库包含一个极简 Extoken CLI：
+This repository includes a minimal Extoken CLI:
 
 ```bash
 npm run extoken -- pack handoff.json
@@ -70,16 +124,24 @@ npm run extoken -- redeem EXT-XXXX-XXXX-XXXX --out package.json
 npm run extoken -- install-skill
 ```
 
-## 部署
+## Deployment Notes
 
-生产环境部署在：
+The public production site is:
 
 ```text
 https://extoken.aishangai.shop
 ```
 
-服务器内存有限，前端构建应在本地完成后同步 `dist/client`。涉及后端接口或 shared 类型变更时，需要同步 `dist/server`、`dist/shared` 并重启 `extoken` 服务。
+The current production server has limited memory, so frontend builds should be produced locally and then synchronized to the server. Backend or shared type changes require synchronizing `dist/server`, `dist/shared`, and restarting the `extoken` service.
 
-## 安全说明
+## Security
 
-Extoken 包用于传递任务上下文，不应作为秘密凭证仓库。不要把明文密码、长期 API Key、SMTP 授权码、SSH 私钥、Cookie、数据库连接串等放入包内容。需要说明环境时，只写变量名、用途、配置位置和脱敏示例。
+Extoken packages are for task context, not credential storage. See [SECURITY.md](SECURITY.md) for reporting and handling security issues.
+
+## Contributing
+
+This project is early and protocol-heavy. Before changing package semantics, read the package protocol page and preserve backward compatibility where possible. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Copyright 2026 Extoken contributors. All rights reserved unless a separate license is added later.
