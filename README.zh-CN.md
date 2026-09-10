@@ -1,6 +1,6 @@
 # Extoken Selfhost
 
-[English](README.md) | 简体中文
+[English](README.md) | 简体中文 | [日本語](README.ja-JP.md) | [한국어](README.ko-KR.md) | [Español](README.es.md)
 
 Extoken 是一个面向 AI Agent 的加密上下文包系统，用于在不同 Agent、IDE、会话和自动化环境之间交接任务现场。
 
